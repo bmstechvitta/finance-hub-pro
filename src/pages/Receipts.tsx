@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Plus,
   Upload,
   Search,
@@ -31,6 +40,7 @@ import {
   Clock,
   XCircle,
 } from "lucide-react";
+import { FileUploadZone } from "@/components/receipts/FileUploadZone";
 
 interface Receipt {
   id: string;
@@ -130,6 +140,14 @@ const statusConfig = {
 };
 
 const Receipts = () => {
+  const [uploadOpen, setUploadOpen] = useState(false);
+
+  const handleUploadComplete = (fileUrl: string, fileName: string) => {
+    console.log("Uploaded:", fileUrl, fileName);
+    setUploadOpen(false);
+    // TODO: Create receipt record with file URL
+  };
+
   return (
     <DashboardLayout>
       {/* Page Header */}
@@ -142,10 +160,27 @@ const Receipts = () => {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline">
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Receipt
-            </Button>
+            <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Receipt
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Upload Receipt</DialogTitle>
+                  <DialogDescription>
+                    Drag and drop your receipt file or click to browse. Supports
+                    JPEG, PNG, WebP, and PDF files.
+                  </DialogDescription>
+                </DialogHeader>
+                <FileUploadZone
+                  onUploadComplete={handleUploadComplete}
+                  className="mt-4"
+                />
+              </DialogContent>
+            </Dialog>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Add Receipt
