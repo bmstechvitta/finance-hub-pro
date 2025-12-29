@@ -198,6 +198,12 @@ export function useApproveExpense() {
         .single();
 
       if (error) throw error;
+
+      // Send email notification (fire and forget)
+      supabase.functions.invoke("send-expense-notification", {
+        body: { expenseId: id, action: "approved" },
+      }).catch((err) => console.error("Failed to send approval notification:", err));
+
       return data;
     },
     onSuccess: () => {
@@ -205,7 +211,7 @@ export function useApproveExpense() {
       queryClient.invalidateQueries({ queryKey: ["expense-stats"] });
       toast({
         title: "Expense approved",
-        description: "The expense has been approved",
+        description: "The expense has been approved and the submitter notified",
       });
     },
     onError: (error: Error) => {
@@ -239,6 +245,12 @@ export function useRejectExpense() {
         .single();
 
       if (error) throw error;
+
+      // Send email notification (fire and forget)
+      supabase.functions.invoke("send-expense-notification", {
+        body: { expenseId: id, action: "rejected", notes },
+      }).catch((err) => console.error("Failed to send rejection notification:", err));
+
       return data;
     },
     onSuccess: () => {
@@ -246,7 +258,7 @@ export function useRejectExpense() {
       queryClient.invalidateQueries({ queryKey: ["expense-stats"] });
       toast({
         title: "Expense rejected",
-        description: "The expense has been rejected",
+        description: "The expense has been rejected and the submitter notified",
       });
     },
     onError: (error: Error) => {
