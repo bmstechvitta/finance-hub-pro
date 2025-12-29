@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.send-payment-reminder]
 verify_jwt = false
+
+[functions.send-policy-violation-notification]
+verify_jwt = true
