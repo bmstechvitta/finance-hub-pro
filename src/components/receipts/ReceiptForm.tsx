@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/select";
 import { FileUploadZone } from "./FileUploadZone";
 import { useCreateReceipt } from "@/hooks/useReceipts";
-import { Loader2 } from "lucide-react";
+import { useReceiptOCR } from "@/hooks/useReceiptOCR";
+import { Loader2, Sparkles } from "lucide-react";
 
 const receiptSchema = z.object({
   receipt_number: z.string().min(1, "Receipt number is required"),
@@ -55,6 +56,7 @@ const categories = [
 export function ReceiptForm({ onSuccess, initialFileUrl }: ReceiptFormProps) {
   const [fileUrl, setFileUrl] = useState<string | null>(initialFileUrl || null);
   const createReceipt = useCreateReceipt();
+  const { extractReceiptData, isExtracting } = useReceiptOCR();
 
   const form = useForm<ReceiptFormData>({
     resolver: zodResolver(receiptSchema),
@@ -82,13 +84,44 @@ export function ReceiptForm({ onSuccess, initialFileUrl }: ReceiptFormProps) {
     onSuccess?.();
   };
 
+  const handleUploadComplete = async (url: string) => {
+    setFileUrl(url);
+    
+    // Only extract from images, not PDFs
+    if (url && !url.toLowerCase().endsWith('.pdf')) {
+      const extractedData = await extractReceiptData(url);
+      if (extractedData) {
+        if (extractedData.vendor) {
+          form.setValue("vendor", extractedData.vendor);
+        }
+        if (extractedData.amount) {
+          form.setValue("amount", extractedData.amount);
+        }
+        if (extractedData.date) {
+          form.setValue("receipt_date", extractedData.date);
+        }
+        if (extractedData.category && categories.includes(extractedData.category)) {
+          form.setValue("category", extractedData.category);
+        }
+      }
+    }
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FileUploadZone
-          onUploadComplete={(url) => setFileUrl(url)}
-          className="mb-4"
-        />
+        <div className="space-y-2">
+          <FileUploadZone
+            onUploadComplete={handleUploadComplete}
+            className="mb-2"
+          />
+          {isExtracting && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+              <Sparkles className="h-4 w-4" />
+              <span>Extracting receipt data with AI...</span>
+            </div>
+          )}
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
