@@ -113,6 +113,21 @@ export function useVerifyReceipt() {
         .single();
 
       if (error) throw error;
+
+      // Send email notification (don't block on this)
+      try {
+        await supabase.functions.invoke("send-receipt-notification", {
+          body: {
+            receiptId: id,
+            status,
+            verificationNotes: notes,
+          },
+        });
+      } catch (emailError) {
+        console.error("Failed to send notification email:", emailError);
+        // Don't throw - the verification was successful
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {
@@ -120,7 +135,7 @@ export function useVerifyReceipt() {
       queryClient.invalidateQueries({ queryKey: ["receipt-stats"] });
       toast({
         title: variables.status === "verified" ? "Receipt approved" : "Receipt rejected",
-        description: `The receipt has been ${variables.status}`,
+        description: `The receipt has been ${variables.status} and the submitter will be notified`,
       });
     },
     onError: (error: Error) => {
