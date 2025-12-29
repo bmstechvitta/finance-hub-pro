@@ -36,6 +36,7 @@ import {
   UserCheck,
   Shield,
   AlertTriangle,
+  BarChart3,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ExpenseDialog } from "@/components/expenses/ExpenseDialog";
@@ -45,6 +46,7 @@ import { PolicyManager } from "@/components/expenses/PolicyManager";
 import { PolicyViolationBadge } from "@/components/expenses/PolicyViolationBadge";
 import { ExpenseActions } from "@/components/expenses/ExpenseActions";
 import { ViolationsDashboard } from "@/components/expenses/ViolationsDashboard";
+import { ExpenseAnalytics } from "@/components/expenses/ExpenseAnalytics";
 import {
   useExpenses,
   useExpenseStats,
@@ -168,6 +170,12 @@ const Expenses = () => {
             <TabsTrigger value="delegations" className="gap-2">
               <UserCheck className="h-4 w-4" />
               Delegations
+            </TabsTrigger>
+          )}
+          {canApprove && (
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
             </TabsTrigger>
           )}
           {canApprove && (
@@ -392,6 +400,12 @@ const Expenses = () => {
         {canApprove && (
           <TabsContent value="delegations">
             <DelegationManager />
+          </TabsContent>
+        )}
+
+        {canApprove && (
+          <TabsContent value="analytics">
+            <ExpenseAnalytics />
           </TabsContent>
         )}
 
