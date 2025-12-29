@@ -143,6 +143,21 @@ export function useCreateExpense() {
         });
       }
 
+      // Send notification to finance managers if there are violations
+      if (violations.length > 0) {
+        supabase.functions.invoke("send-policy-violation-notification", {
+          body: {
+            expenseId: data.id,
+            violations: violations.map(v => ({
+              policyName: v.policy.name,
+              policyType: v.policy.policy_type,
+              violationDetails: v.violationDetails,
+              action: v.policy.action,
+            })),
+          },
+        }).catch((err) => console.error("Failed to send policy violation notification:", err));
+      }
+
       return { expense: data, violations };
     },
     onSuccess: (result) => {
