@@ -98,6 +98,50 @@ export type Database = {
         }
         Relationships: []
       }
+      department_budgets: {
+        Row: {
+          alert_threshold: number
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          department: string
+          id: string
+          is_active: boolean
+          monthly_limit: number
+          updated_at: string
+        }
+        Insert: {
+          alert_threshold?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department: string
+          id?: string
+          is_active?: boolean
+          monthly_limit: number
+          updated_at?: string
+        }
+        Update: {
+          alert_threshold?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string
+          id?: string
+          is_active?: boolean
+          monthly_limit?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_budgets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           company_id: string | null
