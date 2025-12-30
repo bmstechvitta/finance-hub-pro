@@ -38,6 +38,7 @@ import {
   AlertTriangle,
   BarChart3,
   FileText,
+  Wallet,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ExpenseDialog } from "@/components/expenses/ExpenseDialog";
@@ -49,6 +50,7 @@ import { ExpenseActions } from "@/components/expenses/ExpenseActions";
 import { ViolationsDashboard } from "@/components/expenses/ViolationsDashboard";
 import { ExpenseAnalytics } from "@/components/expenses/ExpenseAnalytics";
 import { ExpenseReportGenerator } from "@/components/expenses/ExpenseReportGenerator";
+import { DepartmentBudgetManager } from "@/components/expenses/DepartmentBudgetManager";
 import {
   useExpenses,
   useExpenseStats,
@@ -184,6 +186,12 @@ const Expenses = () => {
             <TabsTrigger value="reports" className="gap-2">
               <FileText className="h-4 w-4" />
               Reports
+            </TabsTrigger>
+          )}
+          {canApprove && (
+            <TabsTrigger value="budgets" className="gap-2">
+              <Wallet className="h-4 w-4" />
+              Budgets
             </TabsTrigger>
           )}
           {canApprove && (
@@ -420,6 +428,12 @@ const Expenses = () => {
         {canApprove && (
           <TabsContent value="reports">
             <ExpenseReportGenerator />
+          </TabsContent>
+        )}
+
+        {canApprove && (
+          <TabsContent value="budgets">
+            <DepartmentBudgetManager />
           </TabsContent>
         )}
 
