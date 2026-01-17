@@ -131,6 +131,28 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    /* Improve touch targets on mobile */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 640px) {
+    /* Improve text readability on small screens */
+    body {
+      font-size: 14px;
+    }
+    
+    /* Better touch targets */
+    button, a {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Prevent text size adjustment on iOS */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 }
 

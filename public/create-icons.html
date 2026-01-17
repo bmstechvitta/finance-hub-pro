@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+
+// 192x192
+canvas.width = 192;
+canvas.height = 192;
+ctx.fillStyle = '#6366f1';
+ctx.fillRect(0, 0, 192, 192);
+ctx.fillStyle = 'white';
+ctx.beginPath();
+ctx.arc(96, 96, 80, 0, 2 * Math.PI);
+ctx.fill();
+ctx.fillStyle = '#6366f1';
+ctx.font = 'bold 60px Arial';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillText('FH', 96, 96);
+const img192 = canvas.toDataURL('image/png');
+console.log('192x192 created');
+
+// 512x512
+canvas.width = 512;
+canvas.height = 512;
+ctx.fillStyle = '#6366f1';
+ctx.fillRect(0, 0, 512, 512);
+ctx.fillStyle = 'white';
+ctx.beginPath();
+ctx.arc(256, 256, 200, 0, 2 * Math.PI);
+ctx.fill();
+ctx.fillStyle = '#6366f1';
+ctx.font = 'bold 150px Arial';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillText('FH', 256, 256);
+const img512 = canvas.toDataURL('image/png');
+console.log('512x512 created');
+</script>
+</head>
+<body>Open browser console to see base64 data</body>
+</html>

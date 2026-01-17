@@ -17,7 +17,9 @@ import {
   Search,
   LogOut,
   Building2,
-  Wallet
+  Wallet,
+  Menu,
+  X
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -61,6 +63,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, roles, signOut } = useAuth();
@@ -81,11 +84,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
   return (
     <div className="min-h-screen flex w-full bg-background">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen transition-all duration-300 gradient-hero",
-          collapsed ? "w-20" : "w-64"
+          "fixed left-0 top-0 z-50 h-screen transition-all duration-300 gradient-hero",
+          collapsed ? "w-20" : "w-64",
+          "lg:translate-x-0",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Logo */}
@@ -112,6 +125,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <li key={item.href} className="animate-slide-in-left" style={{ animationDelay: `${index * 0.05}s` }}>
                   <Link
                     to={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
                     className={cn(
                       "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                       isActive
@@ -120,7 +134,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     )}
                   >
                     <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-primary" : "")} />
-                    {!collapsed && (
+                    {(!collapsed || mobileMenuOpen) && (
                       <>
                         <span className="flex-1">{item.label}</span>
                         {item.badge && (
@@ -161,21 +175,39 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <div className={cn("flex-1 transition-all duration-300", collapsed ? "ml-20" : "ml-64")}>
+      <div className={cn(
+        "flex-1 transition-all duration-300",
+        collapsed ? "lg:ml-20" : "lg:ml-64",
+        "w-full"
+      )}>
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/80 backdrop-blur-xl">
-          <div className="flex h-full items-center justify-between px-6">
+          <div className="flex h-full items-center justify-between px-4 sm:px-6 gap-2">
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </Button>
+
             {/* Search */}
-            <div className="relative w-96">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search transactions, invoices, employees..."
-                className="pl-10 bg-secondary/50 border-0 focus-visible:ring-1"
+                placeholder="Search..."
+                className="pl-10 bg-secondary/50 border-0 focus-visible:ring-1 w-full"
               />
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 sm:gap-3">
               {/* Notifications */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -212,9 +244,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       <AvatarImage src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.email || 'user'}`} />
                       <AvatarFallback>{profile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
-                    <div className="hidden text-left md:block">
+                    <div className="hidden text-left sm:block">
                       <p className="text-sm font-medium">{profile?.full_name || 'User'}</p>
-                      <p className="text-xs text-muted-foreground">{getRoleDisplay()}</p>
+                      <p className="text-xs text-muted-foreground hidden md:block">{getRoleDisplay()}</p>
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
@@ -242,7 +274,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Page Content */}
-        <main className="p-6">
+        <main className="p-4 sm:p-6">
           {children}
         </main>
       </div>
