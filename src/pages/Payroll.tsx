@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,12 @@ import {
   CheckCircle,
   Clock,
   DollarSign,
+  Loader2,
 } from "lucide-react";
+import { PayslipDialog } from "@/components/payroll/PayslipDialog";
+import { generatePayslipPDF, downloadPDF } from "@/components/payroll/PayslipPDF";
+import { useToast } from "@/hooks/use-toast";
+import { useCompany } from "@/hooks/useCompany";
 
 interface Payslip {
   id: string;
@@ -124,6 +130,13 @@ const statusConfig = {
 };
 
 const Payroll = () => {
+  const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
+  const [isPayslipDialogOpen, setIsPayslipDialogOpen] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [printingId, setPrintingId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { data: company } = useCompany();
+
   const totalPayroll = payslips.reduce((sum, p) => sum + p.netPay, 0);
   const paidAmount = payslips
     .filter((p) => p.status === "paid")
@@ -131,6 +144,99 @@ const Payroll = () => {
   const pendingAmount = payslips
     .filter((p) => p.status !== "paid")
     .reduce((sum, p) => sum + p.netPay, 0);
+
+  const handleViewPayslip = (payslip: Payslip) => {
+    setSelectedPayslip(payslip);
+    setIsPayslipDialogOpen(true);
+  };
+
+  const handleDownloadPDF = async (payslip: Payslip) => {
+    try {
+      setDownloadingId(payslip.id);
+      
+      const blob = await generatePayslipPDF(
+        payslip,
+        company?.name || undefined,
+        company?.address || undefined
+      );
+      
+      const filename = `payslip-${payslip.employee.name.replace(/\s+/g, "-")}-${payslip.period.replace(/\s+/g, "-")}.pdf`;
+      downloadPDF(blob, filename);
+      
+      toast({
+        title: "PDF downloaded",
+        description: `Payslip for ${payslip.employee.name} has been downloaded`,
+      });
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      toast({
+        title: "Download failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handlePrint = async (payslip: Payslip) => {
+    try {
+      setPrintingId(payslip.id);
+      
+      const blob = await generatePayslipPDF(
+        payslip,
+        company?.name || undefined,
+        company?.address || undefined
+      );
+      
+      // Create object URL and open in new window for printing
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+      
+      if (printWindow) {
+        // Wait for PDF to load, then trigger print dialog
+        // PDFs in new windows may take a moment to render
+        setTimeout(() => {
+          try {
+            if (printWindow && !printWindow.closed) {
+              printWindow.focus();
+              printWindow.print();
+            }
+          } catch (e) {
+            // Some browsers may block print() on cross-origin content
+            // The PDF viewer will still be open for manual printing
+            console.log("Auto-print not available, user can print manually");
+          }
+          // Clean up the object URL after a delay
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+          }, 2000);
+        }, 1000);
+        
+        toast({
+          title: "Print dialog opening",
+          description: `Payslip for ${payslip.employee.name} is ready to print`,
+        });
+      } else {
+        // If popup was blocked, fallback to download
+        toast({
+          title: "Popup blocked",
+          description: "Please allow popups or use the download option",
+          variant: "destructive",
+        });
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Print failed:", error);
+      toast({
+        title: "Print failed",
+        description: "Failed to generate PDF for printing. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPrintingId(null);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -272,16 +378,30 @@ const Payroll = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewPayslip(payslip)}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Payslip
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Download className="mr-2 h-4 w-4" />
+                          <DropdownMenuItem 
+                            onClick={() => handleDownloadPDF(payslip)}
+                            disabled={downloadingId === payslip.id}
+                          >
+                            {downloadingId === payslip.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Download className="mr-2 h-4 w-4" />
+                            )}
                             Download PDF
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Printer className="mr-2 h-4 w-4" />
+                          <DropdownMenuItem 
+                            onClick={() => handlePrint(payslip)}
+                            disabled={printingId === payslip.id}
+                          >
+                            {printingId === payslip.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Printer className="mr-2 h-4 w-4" />
+                            )}
                             Print
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -294,6 +414,13 @@ const Payroll = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Payslip Dialog */}
+      <PayslipDialog
+        payslip={selectedPayslip}
+        open={isPayslipDialogOpen}
+        onOpenChange={setIsPayslipDialogOpen}
+      />
     </DashboardLayout>
   );
 };
