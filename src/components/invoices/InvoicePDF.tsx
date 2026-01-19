@@ -27,12 +27,10 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 12,
-    width: 120,
-    height: 60,
+    width: 80,
   },
   logo: {
-    width: 120,
-    height: 60,
+    width: 80,
   },
   companyName: {
     fontSize: 20,
@@ -240,6 +238,15 @@ interface InvoicePDFProps {
   companyEmail?: string;
   companyPhone?: string;
   companyWebsite?: string;
+  companyGSTIN?: string;
+  companyPAN?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankIFSC?: string;
+  bankAccountType?: string;
+  bankBranch?: string;
+  clientGSTIN?: string;
+  clientPAN?: string;
 }
 
 const InvoicePDFDocument = ({
@@ -251,6 +258,13 @@ const InvoicePDFDocument = ({
   companyEmail,
   companyPhone,
   companyWebsite,
+  companyGSTIN,
+  companyPAN,
+  bankName,
+  bankAccountNumber,
+  bankIFSC,
+  bankAccountType,
+  bankBranch,
 }: InvoicePDFProps) => {
   const getStatusStyle = () => {
     switch (invoice.status) {
@@ -273,11 +287,17 @@ const InvoicePDFDocument = ({
   // Format company address with additional details
   const formatCompanyDetails = () => {
     let details = companyAddress || "";
-    if (companyEmail) {
-      details += (details ? "\n" : "") + companyEmail;
+    if (companyGSTIN) {
+      details += (details ? "\n" : "") + `GSTIN: ${companyGSTIN}`;
+    }
+    if (companyPAN) {
+      details += (details ? "\n" : "") + `PAN: ${companyPAN}`;
     }
     if (companyPhone) {
       details += (details ? "\n" : "") + companyPhone;
+    }
+    if (companyEmail) {
+      details += (details ? "\n" : "") + companyEmail;
     }
     if (companyWebsite) {
       details += (details ? "\n" : "") + companyWebsite;
@@ -424,7 +444,14 @@ export async function generateInvoicePDF(
   companyLogo?: string,
   companyEmail?: string,
   companyPhone?: string,
-  companyWebsite?: string
+  companyWebsite?: string,
+  companyGSTIN?: string,
+  companyPAN?: string,
+  bankName?: string,
+  bankAccountNumber?: string,
+  bankIFSC?: string,
+  bankAccountType?: string,
+  bankBranch?: string
 ): Promise<Blob> {
   const doc = (
     <InvoicePDFDocument
@@ -436,6 +463,13 @@ export async function generateInvoicePDF(
       companyEmail={companyEmail}
       companyPhone={companyPhone}
       companyWebsite={companyWebsite}
+      companyGSTIN={companyGSTIN}
+      companyPAN={companyPAN}
+      bankName={bankName}
+      bankAccountNumber={bankAccountNumber}
+      bankIFSC={bankIFSC}
+      bankAccountType={bankAccountType}
+      bankBranch={bankBranch}
     />
   );
   const blob = await pdf(doc).toBlob();

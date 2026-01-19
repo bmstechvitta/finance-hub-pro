@@ -76,12 +76,19 @@ const Settings = () => {
   const [formData, setFormData] = useState({
     name: "",
     tax_id: "",
+    gstin: "",
+    pan: "",
     email: "",
     phone: "",
     address: "",
     website: "",
     currency: "INR",
     timezone: "UTC",
+    bank_name: "",
+    bank_account_number: "",
+    bank_ifsc: "",
+    bank_account_type: "",
+    bank_branch: "",
   });
 
   const prevLogoUrlRef = useRef<string | null>(null);
@@ -91,12 +98,19 @@ const Settings = () => {
       setFormData({
         name: company.name || "",
         tax_id: company.tax_id || "",
+        gstin: (company as any).gstin || "",
+        pan: (company as any).pan || "",
         email: company.email || "",
         phone: company.phone || "",
         address: company.address || "",
         website: company.website || "",
         currency: company.currency || "INR",
         timezone: company.timezone || "UTC",
+        bank_name: (company as any).bank_name || "",
+        bank_account_number: (company as any).bank_account_number || "",
+        bank_ifsc: (company as any).bank_ifsc || "",
+        bank_account_type: (company as any).bank_account_type || "",
+        bank_branch: (company as any).bank_branch || "",
       });
       // Update logo version only when logo_url actually changes
       if (company.logo_url && company.logo_url !== prevLogoUrlRef.current) {
@@ -494,6 +508,28 @@ const Settings = () => {
                       />
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="gstin">GSTIN</Label>
+                      <Input
+                        id="gstin"
+                        value={formData.gstin}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, gstin: e.target.value }))
+                        }
+                        placeholder="36ADEFS9619N2ZA"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pan">PAN</Label>
+                      <Input
+                        id="pan"
+                        value={formData.pan}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, pan: e.target.value }))
+                        }
+                        placeholder="ADEFS9619N"
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
                       <Input
                         id="email"
@@ -535,6 +571,77 @@ const Settings = () => {
                       />
                     </div>
                   </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Bank Details</h3>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="bankName">Bank Name</Label>
+                        <Input
+                          id="bankName"
+                          value={formData.bank_name}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, bank_name: e.target.value }))
+                          }
+                          placeholder="AXIS BANK"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bankAccountNumber">Account Number</Label>
+                        <Input
+                          id="bankAccountNumber"
+                          value={formData.bank_account_number}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, bank_account_number: e.target.value }))
+                          }
+                          placeholder="1234567890"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bankIFSC">IFSC Code</Label>
+                        <Input
+                          id="bankIFSC"
+                          value={formData.bank_ifsc}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, bank_ifsc: e.target.value }))
+                          }
+                          placeholder="UTIB0001234"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bankAccountType">Account Type</Label>
+                        <Select
+                          value={formData.bank_account_type}
+                          onValueChange={(value) =>
+                            setFormData((prev) => ({ ...prev, bank_account_type: value }))
+                          }
+                        >
+                          <SelectTrigger id="bankAccountType">
+                            <SelectValue placeholder="Select account type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Current">Current</SelectItem>
+                            <SelectItem value="Savings">Savings</SelectItem>
+                            <SelectItem value="OD">OD (Overdraft)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="bankBranch">Bank Branch</Label>
+                        <Input
+                          id="bankBranch"
+                          value={formData.bank_branch}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, bank_branch: e.target.value }))
+                          }
+                          placeholder="Branch name and address"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div className="flex justify-end">
                     <Button
                       onClick={handleSaveCompanyProfile}
