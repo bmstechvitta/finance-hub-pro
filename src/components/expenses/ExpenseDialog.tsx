@@ -26,6 +26,7 @@ import {
   useCreateExpense,
   useUpdateExpense,
   useExpenseCategories,
+  useCreateExpenseCategory,
 } from "@/hooks/useExpenses";
 import { useReceipts } from "@/hooks/useReceipts";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +61,7 @@ export function ExpenseDialog({
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
   const { data: categories } = useExpenseCategories();
+  const createCategory = useCreateExpenseCategory();
   const { data: receipts } = useReceipts();
   const { extractReceiptData, isExtracting } = useReceiptOCR();
 
@@ -68,10 +70,13 @@ export function ExpenseDialog({
     amount: "",
     expense_date: new Date().toISOString().split("T")[0],
     category_id: "",
+    customCategory: "",
     department: "",
     notes: "",
     receipt_id: "",
   });
+
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
 
   // File upload state
   const [receiptTab, setReceiptTab] = useState<"existing" | "upload">("upload");
@@ -233,11 +238,38 @@ export function ExpenseDialog({
     }
   };
 
+  // Check if "Other" category is selected
+  useEffect(() => {
+    // Find if there's an "Other" category in the list
+    const otherCategory = categories?.find(cat => cat.name.toLowerCase() === "other");
+    if (formData.category_id === otherCategory?.id) {
+      setShowCustomCategoryInput(true);
+    } else {
+      setShowCustomCategoryInput(false);
+      if (formData.category_id !== otherCategory?.id) {
+        setFormData(prev => ({ ...prev, customCategory: "" }));
+      }
+    }
+  }, [formData.category_id, categories]);
+
   const handleSubmit = async () => {
     if (!formData.description || !formData.amount) return;
 
     try {
       let receiptId = formData.receipt_id || null;
+      let finalCategoryId = formData.category_id || null;
+
+      // If "Other" is selected and custom category is provided, create it
+      const otherCategory = categories?.find(cat => cat.name.toLowerCase() === "other");
+      if (formData.category_id === otherCategory?.id && formData.customCategory?.trim()) {
+        try {
+          const newCategory = await createCategory.mutateAsync(formData.customCategory.trim());
+          finalCategoryId = newCategory.id;
+        } catch (error) {
+          console.error("Failed to save custom category:", error);
+          // Continue with expense creation even if category save fails
+        }
+      }
 
       // If a new file was uploaded, create a receipt record first
       if (uploadedFile && !receiptId) {
@@ -265,7 +297,7 @@ export function ExpenseDialog({
         description: formData.description,
         amount: Number(formData.amount),
         expense_date: formData.expense_date,
-        category_id: formData.category_id || null,
+        category_id: finalCategoryId,
         department: formData.department || null,
         notes: formData.notes || null,
         receipt_id: receiptId,
@@ -505,13 +537,32 @@ export function ExpenseDialog({
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories?.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
+                  {categories && categories.length > 0 ? (
+                    categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="loading" disabled>
+                      Loading categories...
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
+              {showCustomCategoryInput && (
+                <div className="mt-2">
+                  <Label htmlFor="customCategory">Custom Category</Label>
+                  <Input
+                    id="customCategory"
+                    placeholder="Enter custom category name"
+                    value={formData.customCategory}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, customCategory: e.target.value }))
+                    }
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
 import { checkExpenseAgainstPolicies } from "@/hooks/useExpensePolicies";
+import { useCompany } from "./useCompany";
 
 export type Expense = Tables<"expenses"> & {
   profiles?: { full_name: string | null; avatar_url: string | null } | null;
@@ -87,16 +88,102 @@ export function useExpenseStats() {
 }
 
 export function useExpenseCategories() {
+  const { data: company } = useCompany();
+  
   return useQuery({
-    queryKey: ["expense-categories"],
+    queryKey: ["expense-categories", company?.id],
     queryFn: async () => {
+      if (!company?.id) return [];
+
       const { data, error } = await supabase
         .from("expense_categories")
         .select("*")
+        .eq("company_id", company.id)
         .order("name");
 
       if (error) throw error;
+      
+      // Remove duplicates by name (keep first occurrence, case-insensitive)
+      const uniqueCategories = Array.from(
+        new Map(data?.map(cat => [cat.name.toLowerCase(), cat]) || []).values()
+      );
+      
+      // Ensure "Other" category exists
+      const hasOther = uniqueCategories.some(cat => cat.name.toLowerCase() === "other");
+      if (!hasOther && data && data.length > 0) {
+        // Create "Other" category if it doesn't exist
+        try {
+          const { data: otherCategory } = await supabase
+            .from("expense_categories")
+            .insert({
+              company_id: company.id,
+              name: "Other",
+              description: "Custom category",
+            })
+            .select()
+            .single();
+          
+          if (otherCategory) {
+            uniqueCategories.push(otherCategory);
+          }
+        } catch (insertError) {
+          // If insert fails (e.g., duplicate), try to fetch it
+          const { data: existingOther } = await supabase
+            .from("expense_categories")
+            .select("*")
+            .eq("company_id", company.id)
+            .ilike("name", "other")
+            .single();
+          
+          if (existingOther) {
+            uniqueCategories.push(existingOther);
+          }
+        }
+      }
+      
+      return uniqueCategories;
+    },
+    enabled: !!company?.id,
+  });
+}
+
+export function useCreateExpenseCategory() {
+  const queryClient = useQueryClient();
+  const { data: company } = useCompany();
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      if (!company?.id) throw new Error("Company not found");
+
+      // Check if category already exists
+      const { data: existing } = await supabase
+        .from("expense_categories")
+        .select("id")
+        .eq("company_id", company.id)
+        .ilike("name", name.trim())
+        .single();
+
+      if (existing) {
+        // Category already exists, return it
+        return existing;
+      }
+
+      // Create new category
+      const { data, error } = await supabase
+        .from("expense_categories")
+        .insert({
+          company_id: company.id,
+          name: name.trim(),
+          description: null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
     },
   });
 }

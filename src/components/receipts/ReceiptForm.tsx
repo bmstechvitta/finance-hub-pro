@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,6 +23,7 @@ import {
 import { FileUploadZone } from "./FileUploadZone";
 import { useCreateReceipt } from "@/hooks/useReceipts";
 import { useReceiptOCR } from "@/hooks/useReceiptOCR";
+import { useReceiptCategories, useCreateReceiptCategory } from "@/hooks/useReceiptCategories";
 import { Loader2, Sparkles } from "lucide-react";
 
 const receiptSchema = z.object({
@@ -30,6 +31,7 @@ const receiptSchema = z.object({
   vendor: z.string().min(1, "Vendor name is required"),
   amount: z.coerce.number().positive("Amount must be positive"),
   category: z.string().optional(),
+  customCategory: z.string().optional(),
   description: z.string().optional(),
   receipt_date: z.string().min(1, "Date is required"),
 });
@@ -41,22 +43,16 @@ interface ReceiptFormProps {
   initialFileUrl?: string;
 }
 
-const categories = [
-  "Office Supplies",
-  "Technology",
-  "Travel",
-  "Meals & Entertainment",
-  "Utilities",
-  "Shipping",
-  "Marketing",
-  "Professional Services",
-  "Other",
-];
-
 export function ReceiptForm({ onSuccess, initialFileUrl }: ReceiptFormProps) {
   const [fileUrl, setFileUrl] = useState<string | null>(initialFileUrl || null);
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
+  const { data: categoriesData } = useReceiptCategories();
   const createReceipt = useCreateReceipt();
+  const createCategory = useCreateReceiptCategory();
   const { extractReceiptData, isExtracting } = useReceiptOCR();
+
+  // Get all categories (default + custom from database)
+  const allCategories = categoriesData?.all || [];
 
   const form = useForm<ReceiptFormData>({
     resolver: zodResolver(receiptSchema),
@@ -65,22 +61,51 @@ export function ReceiptForm({ onSuccess, initialFileUrl }: ReceiptFormProps) {
       vendor: "",
       amount: 0,
       category: "",
+      customCategory: "",
       description: "",
       receipt_date: new Date().toISOString().split("T")[0],
     },
   });
 
+  const selectedCategory = form.watch("category");
+  
+  // Show custom input when "Other" is selected
+  useEffect(() => {
+    setShowCustomCategoryInput(selectedCategory === "Other");
+    if (selectedCategory !== "Other") {
+      form.setValue("customCategory", "");
+    }
+  }, [selectedCategory, form]);
+
   const onSubmit = async (data: ReceiptFormData) => {
+    // If "Other" is selected and custom category is provided, use custom category
+    let finalCategory = data.category;
+    if (data.category === "Other" && data.customCategory?.trim()) {
+      finalCategory = data.customCategory.trim();
+      // Save custom category to database for future use
+      try {
+        await createCategory.mutateAsync(finalCategory);
+      } catch (error) {
+        console.error("Failed to save custom category:", error);
+        // Continue with receipt creation even if category save fails
+      }
+    }
+
     await createReceipt.mutateAsync({
       receipt_number: data.receipt_number,
       vendor: data.vendor,
       amount: data.amount,
-      category: data.category || null,
+      category: finalCategory || null,
       description: data.description || null,
       receipt_date: data.receipt_date,
       file_url: fileUrl,
       status: "pending",
     });
+    
+    // Reset form
+    form.reset();
+    setFileUrl(null);
+    setShowCustomCategoryInput(false);
     onSuccess?.();
   };
 
@@ -100,8 +125,16 @@ export function ReceiptForm({ onSuccess, initialFileUrl }: ReceiptFormProps) {
         if (extractedData.date) {
           form.setValue("receipt_date", extractedData.date);
         }
-        if (extractedData.category && categories.includes(extractedData.category)) {
-          form.setValue("category", extractedData.category);
+        if (extractedData.category) {
+          // Check if it's in default or custom categories
+          if (allCategories.includes(extractedData.category)) {
+            form.setValue("category", extractedData.category);
+          } else {
+            // Set as custom category
+            form.setValue("category", "Other");
+            form.setValue("customCategory", extractedData.category);
+            setShowCustomCategoryInput(true);
+          }
         }
       }
     }
@@ -194,24 +227,49 @@ export function ReceiptForm({ onSuccess, initialFileUrl }: ReceiptFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  {allCategories.length > 0 ? (
+                    allCategories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="loading" disabled>
+                      Loading categories...
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        {showCustomCategoryInput && (
+          <FormField
+            control={form.control}
+            name="customCategory"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Custom Category</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter custom category name"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
