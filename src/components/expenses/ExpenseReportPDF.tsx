@@ -252,7 +252,7 @@ const ExpenseReportPDFDocument = ({
   filters,
   grouped,
   summary,
-  companyName = "Your Company",
+  companyName,
   companyAddress,
 }: ExpenseReportPDFProps) => {
   const formatCurrency = (amount: number) => {

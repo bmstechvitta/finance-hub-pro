@@ -342,9 +342,10 @@ export function useSendInvoice() {
 }
 
 // Generate invoice number
-export function generateInvoiceNumber(): string {
+export function generateInvoiceNumber(prefix?: string): string {
   const date = new Date();
   const year = date.getFullYear();
   const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-  return `INV-${year}-${random}`;
+  const invoicePrefix = prefix || "INV";
+  return `${invoicePrefix}-${year}-${random}`;
 }

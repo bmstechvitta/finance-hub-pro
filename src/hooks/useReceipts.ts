@@ -46,6 +46,13 @@ export function useReceiptStats() {
   });
 }
 
+// Generate receipt number
+export function generateReceiptNumber(prefix?: string): string {
+  const timestamp = Date.now().toString().slice(-6);
+  const receiptPrefix = prefix || "RCP";
+  return `${receiptPrefix}-${timestamp}`;
+}
+
 export function useCreateReceipt() {
   const queryClient = useQueryClient();
 

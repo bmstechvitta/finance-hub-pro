@@ -190,7 +190,7 @@ export function QuotationDialog({
         const validUntil = new Date();
         validUntil.setDate(validUntil.getDate() + 15);
         setFormData({
-          quotation_number: generateQuotationNumber(),
+          quotation_number: generateQuotationNumber((company as any)?.quotation_prefix),
           client_name: "",
           client_email: "",
           client_address: "",

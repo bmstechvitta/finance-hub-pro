@@ -70,13 +70,31 @@ const handler = async (req: Request): Promise<Response> => {
 
       const { data: company } = await supabase
         .from("companies")
-        .select("name, email, phone")
+        .select("name, email, phone, email_sender_name, email_reply_to, resend_api_key")
         .eq("id", invoice.company_id)
         .maybeSingle();
 
       const companyName = company?.name || "Our Company";
       const companyEmail = company?.email || "";
       const companyPhone = company?.phone || "";
+      
+      // Use company email settings or fallback to defaults
+      const senderName = company?.email_sender_name || companyName;
+      const replyTo = company?.email_reply_to || companyEmail || null;
+      const fromEmail = companyEmail || "onboarding@resend.dev";
+      
+      // Use company's Resend API key if configured, otherwise use environment variable
+      const resendApiKey = company?.resend_api_key || RESEND_API_KEY;
+      
+      if (!resendApiKey) {
+        console.warn(`Resend API key not configured for company ${invoice.company_id}, skipping invoice ${invoice.invoice_number}`);
+        results.push({
+          invoiceId: invoice.id,
+          success: false,
+          error: "Resend API key not configured",
+        });
+        continue;
+      }
       
       const daysOverdue = Math.floor(
         (new Date().getTime() - new Date(invoice.due_date).getTime()) / (1000 * 60 * 60 * 24)
@@ -150,11 +168,12 @@ const handler = async (req: Request): Promise<Response> => {
         const emailResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${RESEND_API_KEY}`,
+            "Authorization": `Bearer ${resendApiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: `${companyName} <onboarding@resend.dev>`,
+            from: `${senderName} <${fromEmail}>`,
+            reply_to: replyTo || undefined,
             to: [invoice.client_email],
             subject: `Payment Reminder: Invoice ${invoice.invoice_number} is ${daysOverdue} Days Overdue`,
             html: emailHtml,

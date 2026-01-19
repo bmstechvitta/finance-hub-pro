@@ -92,8 +92,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Use company email settings or fallback to defaults
-    const senderName = company?.email_sender_name || "FinanceHub";
-    const replyTo = company?.email_reply_to || company?.email || "support@financehub.com";
+    const senderName = company?.email_sender_name || company?.name || "FinanceHub";
+    const replyTo = company?.email_reply_to || company?.email || null;
     const fromEmail = company?.email || "onboarding@resend.dev";
     
     // Use company's Resend API key if configured, otherwise use environment variable

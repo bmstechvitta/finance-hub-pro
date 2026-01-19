@@ -19,13 +19,14 @@ import {
   Building2,
   Wallet,
   Menu,
-  X,
-  FileCheck
+  X
+  // FileCheck
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompany } from "@/hooks/useCompany";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +47,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Quotations", href: "/quotations", icon: FileCheck },
+  // { label: "Quotations", href: "/quotations", icon: FileCheck },
   { label: "Receipts", href: "/receipts", icon: Receipt, badge: 12 },
   { label: "Invoices", href: "/invoices", icon: FileText, badge: 5 },
   { label: "Expenses", href: "/expenses", icon: CreditCard },
@@ -65,6 +66,8 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const { data: company } = useCompany();
+  const companyName = company?.name || "FinanceHub";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -111,7 +114,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
             {!collapsed && (
               <div className="animate-fade-in">
-                <h1 className="text-lg font-bold text-white">FinanceHub</h1>
+                <h1 className="text-lg font-bold text-white">{companyName}</h1>
                 <p className="text-[10px] text-white/60">Enterprise Suite</p>
               </div>
             )}

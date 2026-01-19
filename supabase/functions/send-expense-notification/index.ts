@@ -81,6 +81,29 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending notification to ${submitterProfile.email}`);
 
+    // Fetch company email settings
+    const { data: company, error: companyError } = await supabase
+      .from("companies")
+      .select("email_sender_name, email_reply_to, resend_api_key, name, email")
+      .eq("id", expense.company_id)
+      .single();
+
+    if (companyError) {
+      console.warn("Error fetching company email settings:", companyError);
+    }
+
+    // Use company email settings or fallback to defaults
+    const senderName = company?.email_sender_name || company?.name || "Expenses";
+    const replyTo = company?.email_reply_to || company?.email || null;
+    const fromEmail = company?.email || "onboarding@resend.dev";
+    
+    // Use company's Resend API key if configured, otherwise use environment variable
+    const resendApiKey = company?.resend_api_key || RESEND_API_KEY;
+    
+    if (!resendApiKey) {
+      throw new Error("Resend API key is not configured. Please set it in Settings > Email Settings.");
+    }
+
     const formatCurrency = (amount: number) => {
       return new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -189,11 +212,12 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Authorization": `Bearer ${resendApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Expenses <onboarding@resend.dev>",
+        from: `${senderName} <${fromEmail}>`,
+        reply_to: replyTo || undefined,
         to: [submitterProfile.email],
         subject: `Expense ${statusText}: ${expense.description} - ${formatCurrency(expense.amount)}`,
         html: emailHtml,

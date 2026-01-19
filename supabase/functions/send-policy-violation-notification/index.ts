@@ -219,17 +219,41 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
+    // Fetch company email settings
+    const { data: company, error: companyError } = await supabase
+      .from("companies")
+      .select("email_sender_name, email_reply_to, resend_api_key, name, email")
+      .eq("id", expense.company_id)
+      .single();
+
+    if (companyError) {
+      console.warn("Error fetching company email settings:", companyError);
+    }
+
+    // Use company email settings or fallback to defaults
+    const senderName = company?.email_sender_name || company?.name || "Expenses";
+    const replyTo = company?.email_reply_to || company?.email || null;
+    const fromEmail = company?.email || "onboarding@resend.dev";
+    
+    // Use company's Resend API key if configured, otherwise use environment variable
+    const resendApiKey = company?.resend_api_key || RESEND_API_KEY;
+    
+    if (!resendApiKey) {
+      throw new Error("Resend API key is not configured. Please set it in Settings > Email Settings.");
+    }
+
     // Send to all finance users
     const emailPromises = recipients.map(async (recipient) => {
       try {
         const emailResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${RESEND_API_KEY}`,
+            "Authorization": `Bearer ${resendApiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Expenses <onboarding@resend.dev>",
+            from: `${senderName} <${fromEmail}>`,
+            reply_to: replyTo || undefined,
             to: [recipient.email],
             subject: `⚠️ Policy Violation: ${expense.description} - ${formatCurrency(expense.amount)}`,
             html: emailHtml,

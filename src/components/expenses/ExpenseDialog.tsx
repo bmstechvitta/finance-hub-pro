@@ -273,7 +273,14 @@ export function ExpenseDialog({
 
       // If a new file was uploaded, create a receipt record first
       if (uploadedFile && !receiptId) {
-        const receiptNumber = `RCP-${Date.now().toString().slice(-8)}`;
+        // Generate receipt number with company prefix if available
+        const { data: company } = await supabase
+          .from("companies")
+          .select("receipt_prefix")
+          .eq("id", expense.company_id)
+          .single();
+        const receiptPrefix = (company as any)?.receipt_prefix || "RCP";
+        const receiptNumber = `${receiptPrefix}-${Date.now().toString().slice(-8)}`;
         
         const { data: newReceipt, error: receiptError } = await supabase
           .from("receipts")

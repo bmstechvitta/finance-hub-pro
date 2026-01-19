@@ -252,8 +252,8 @@ interface InvoicePDFProps {
 const InvoicePDFDocument = ({
   invoice,
   items,
-  companyName = "Your Company",
-  companyAddress = "123 Business Street\nCity, State 12345",
+  companyName,
+  companyAddress,
   companyLogo,
   companyEmail,
   companyPhone,

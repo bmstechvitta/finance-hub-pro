@@ -151,10 +151,11 @@ export function useServiceTemplates() {
   });
 }
 
-export function generateQuotationNumber(): string {
+export function generateQuotationNumber(prefix?: string): string {
   const year = new Date().getFullYear();
   const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-  return `QT-${year}-${random}`;
+  const quotationPrefix = prefix || "QT";
+  return `${quotationPrefix}-${year}-${random}`;
 }
 
 export function useCreateQuotation() {
@@ -464,8 +465,16 @@ export function useConvertQuotationToInvoice() {
 
       if (itemsError) throw itemsError;
 
-      // Generate invoice number
-      const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, "0")}`;
+      // Fetch company settings for invoice prefix
+      const { data: companySettings } = await supabase
+        .from("companies")
+        .select("invoice_prefix")
+        .eq("id", company.id)
+        .single();
+      
+      // Generate invoice number with company prefix
+      const invoicePrefix = (companySettings as any)?.invoice_prefix || "INV";
+      const invoiceNumber = `${invoicePrefix}-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, "0")}`;
 
       // Calculate due date (30 days from now)
       const dueDate = new Date();

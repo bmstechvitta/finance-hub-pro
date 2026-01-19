@@ -458,14 +458,41 @@ const handler = async (req: Request): Promise<Response> => {
     for (const profile of validRecipients) {
       console.log(`Sending daily digest to ${profile.email}`);
 
+      // Fetch company email settings for this recipient
+      let senderName = "Expense Alerts";
+      let fromEmail = "onboarding@resend.dev";
+      let replyTo: string | null = null;
+      let resendApiKey = RESEND_API_KEY;
+
+      if (profile.company_id) {
+        const { data: company } = await supabase
+          .from("companies")
+          .select("email_sender_name, email_reply_to, resend_api_key, name, email")
+          .eq("id", profile.company_id)
+          .single();
+
+        if (company) {
+          senderName = company.email_sender_name || company.name || "Expense Alerts";
+          replyTo = company.email_reply_to || company.email || null;
+          fromEmail = company.email || "onboarding@resend.dev";
+          resendApiKey = company.resend_api_key || RESEND_API_KEY;
+        }
+      }
+
+      if (!resendApiKey) {
+        console.warn(`Resend API key not configured for recipient ${profile.email}, skipping`);
+        continue;
+      }
+
       const emailResponse = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${RESEND_API_KEY}`,
+          "Authorization": `Bearer ${resendApiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "Expense Alerts <onboarding@resend.dev>",
+          from: `${senderName} <${fromEmail}>`,
+          reply_to: replyTo || undefined,
           to: [profile.email],
           subject: `📊 Daily Digest: ${anomalies.length} Expense Anomal${anomalies.length > 1 ? "ies" : "y"} Detected`,
           html: emailHtml,

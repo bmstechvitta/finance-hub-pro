@@ -88,7 +88,7 @@ export function InvoiceDialog({
         });
       } else {
         setFormData({
-          invoice_number: generateInvoiceNumber(),
+          invoice_number: generateInvoiceNumber((company as any)?.invoice_prefix),
           client_name: "",
           client_email: "",
           client_address: "",

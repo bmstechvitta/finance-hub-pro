@@ -92,6 +92,9 @@ const Settings = () => {
     email_sender_name: "",
     email_reply_to: "",
     resend_api_key: "",
+    invoice_prefix: "",
+    receipt_prefix: "",
+    quotation_prefix: "",
   });
 
   const prevLogoUrlRef = useRef<string | null>(null);
@@ -114,9 +117,12 @@ const Settings = () => {
         bank_ifsc: (company as any).bank_ifsc || "",
         bank_account_type: (company as any).bank_account_type || "",
         bank_branch: (company as any).bank_branch || "",
-        email_sender_name: (company as any).email_sender_name || "FinanceHub",
-        email_reply_to: (company as any).email_reply_to || "",
+        email_sender_name: (company as any).email_sender_name || company?.name || "",
+        email_reply_to: (company as any).email_reply_to || company?.email || "",
         resend_api_key: (company as any).resend_api_key || "",
+        invoice_prefix: (company as any).invoice_prefix || "INV",
+        receipt_prefix: (company as any).receipt_prefix || "RCP",
+        quotation_prefix: (company as any).quotation_prefix || "QT",
       });
       // Update logo version only when logo_url actually changes
       if (company.logo_url && company.logo_url !== prevLogoUrlRef.current) {
@@ -680,11 +686,33 @@ const Settings = () => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="invoicePrefix">Invoice Prefix</Label>
-                  <Input id="invoicePrefix" defaultValue="INV-" />
+                  <Input 
+                    id="invoicePrefix" 
+                    value={formData.invoice_prefix}
+                    onChange={(e) => setFormData({ ...formData, invoice_prefix: e.target.value })}
+                    placeholder="INV"
+                  />
+                  <p className="text-xs text-muted-foreground">Prefix for invoice numbers (e.g., INV, INV-, CUST-)</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="nextNumber">Next Invoice Number</Label>
-                  <Input id="nextNumber" defaultValue="2024-007" />
+                  <Label htmlFor="receiptPrefix">Receipt Prefix</Label>
+                  <Input 
+                    id="receiptPrefix" 
+                    value={formData.receipt_prefix}
+                    onChange={(e) => setFormData({ ...formData, receipt_prefix: e.target.value })}
+                    placeholder="RCP"
+                  />
+                  <p className="text-xs text-muted-foreground">Prefix for receipt numbers (e.g., RCP, RCP-, REC-)</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quotationPrefix">Quotation Prefix</Label>
+                  <Input 
+                    id="quotationPrefix" 
+                    value={formData.quotation_prefix}
+                    onChange={(e) => setFormData({ ...formData, quotation_prefix: e.target.value })}
+                    placeholder="QT"
+                  />
+                  <p className="text-xs text-muted-foreground">Prefix for quotation numbers (e.g., QT, QT-, QUOT-)</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="defaultTax">Default Tax Rate (%)</Label>
@@ -696,9 +724,30 @@ const Settings = () => {
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+                <Button 
+                  onClick={() => {
+                    if (company) {
+                      updateCompany.mutate({
+                        id: company.id,
+                        invoice_prefix: formData.invoice_prefix,
+                        receipt_prefix: formData.receipt_prefix,
+                        quotation_prefix: formData.quotation_prefix,
+                      });
+                    }
+                  }}
+                  disabled={updateCompany.isPending}
+                >
+                  {updateCompany.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Changes
+                    </>
+                  )}
                 </Button>
               </div>
             </CardContent>
@@ -872,7 +921,7 @@ const Settings = () => {
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, email_sender_name: e.target.value }))
                     }
-                    placeholder="FinanceHub"
+                    placeholder={company?.name || "Company Name"}
                   />
                 </div>
                 <div className="space-y-2">
@@ -884,7 +933,7 @@ const Settings = () => {
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, email_reply_to: e.target.value }))
                     }
-                    placeholder="support@financehub.com"
+                    placeholder={company?.email || "support@example.com"}
                   />
                 </div>
               </div>

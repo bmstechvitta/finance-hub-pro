@@ -21,9 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FileUploadZone } from "./FileUploadZone";
-import { useCreateReceipt } from "@/hooks/useReceipts";
+import { useCreateReceipt, generateReceiptNumber } from "@/hooks/useReceipts";
 import { useReceiptOCR } from "@/hooks/useReceiptOCR";
 import { useReceiptCategories, useCreateReceiptCategory } from "@/hooks/useReceiptCategories";
+import { useCompany } from "@/hooks/useCompany";
 import { Loader2, Sparkles } from "lucide-react";
 
 const receiptSchema = z.object({
@@ -50,6 +51,7 @@ export function ReceiptForm({ onSuccess, initialFileUrl }: ReceiptFormProps) {
   const createReceipt = useCreateReceipt();
   const createCategory = useCreateReceiptCategory();
   const { extractReceiptData, isExtracting } = useReceiptOCR();
+  const { data: company } = useCompany();
 
   // Get all categories (default + custom from database)
   const allCategories = categoriesData?.all || [];
@@ -57,7 +59,7 @@ export function ReceiptForm({ onSuccess, initialFileUrl }: ReceiptFormProps) {
   const form = useForm<ReceiptFormData>({
     resolver: zodResolver(receiptSchema),
     defaultValues: {
-      receipt_number: `RCP-${Date.now().toString().slice(-6)}`,
+      receipt_number: generateReceiptNumber((company as any)?.receipt_prefix),
       vendor: "",
       amount: 0,
       category: "",

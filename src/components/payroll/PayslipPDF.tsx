@@ -204,8 +204,8 @@ interface PayslipPDFProps {
 
 const PayslipPDFDocument = ({
   payslip,
-  companyName = "Your Company",
-  companyAddress = "123 Business Street\nCity, State 12345\ncontact@company.com",
+  companyName,
+  companyAddress,
 }: PayslipPDFProps) => {
   const getStatusStyle = () => {
     switch (payslip.status) {
