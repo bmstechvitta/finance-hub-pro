@@ -76,19 +76,43 @@ export function useUploadCompanyLogo() {
 
   return useMutation({
     mutationFn: async ({ companyId, file }: { companyId: string; file: File }) => {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Invalid file type. Please upload a JPEG, PNG, WebP, or SVG image.');
+      }
+
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        throw new Error('File size exceeds 5MB limit.');
+      }
+
       const fileExt = file.name.split(".").pop();
       const fileName = `${companyId}/logo.${fileExt}`;
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from("receipts") // Reusing receipts bucket for simplicity
-        .upload(fileName, file, { upsert: true });
+      // Upload to company-assets storage bucket
+      const { error: uploadError, data: uploadData } = await supabase.storage
+        .from("company-assets")
+        .upload(fileName, file, { 
+          upsert: true,
+          contentType: file.type 
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        // Provide more helpful error messages
+        if (uploadError.message.includes('Bucket not found') || uploadError.message.includes('does not exist')) {
+          throw new Error('Storage bucket not configured. Please contact your administrator to set up the company-assets bucket.');
+        }
+        if (uploadError.message.includes('new row violates row-level security policy')) {
+          throw new Error('You do not have permission to upload company logos. Admin or Finance Manager role required.');
+        }
+        throw uploadError;
+      }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from("receipts")
+        .from("company-assets")
         .getPublicUrl(fileName);
 
       // Update company with logo URL
@@ -108,11 +132,11 @@ export function useUploadCompanyLogo() {
         description: "Company logo has been updated",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Failed to upload logo:", error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload company logo",
+        description: error.message || "Failed to upload company logo. Please ensure you have admin or finance manager permissions.",
         variant: "destructive",
       });
     },
