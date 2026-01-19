@@ -27,10 +27,10 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 12,
-    width: 80,
+    width: 60,
   },
   logo: {
-    width: 80,
+    width: 60,
   },
   companyName: {
     fontSize: 20,

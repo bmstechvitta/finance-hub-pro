@@ -37,6 +37,12 @@ export function SendInvoiceDialog({
     try {
       setIsSending(true);
       
+      // Ensure we have a valid session before calling the function
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error("You must be logged in to send invoices");
+      }
+      
       const { data, error } = await supabase.functions.invoke("send-invoice-email", {
         body: {
           invoiceId: invoice.id,

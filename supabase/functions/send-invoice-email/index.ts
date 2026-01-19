@@ -16,26 +16,60 @@ interface SendInvoiceRequest {
 
 const handler = async (req: Request): Promise<Response> => {
   console.log("Send invoice email function called");
+  console.log("Request method:", req.method);
+  console.log("Request headers:", Object.fromEntries(req.headers.entries()));
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Parse request body
     const { invoiceId, recipientEmail, message }: SendInvoiceRequest = await req.json();
-    console.log(`Sending invoice ${invoiceId} to ${recipientEmail}`);
-
+    
     if (!recipientEmail) {
       throw new Error("Recipient email is required");
     }
 
-    // Create Supabase client
+    if (!invoiceId) {
+      throw new Error("Invoice ID is required");
+    }
+
+    // Create Supabase clients
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch invoice details
-    const { data: invoice, error: invoiceError } = await supabase
+    // Try to get user from auth header if available
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+    let userId: string | null = null;
+
+    if (authHeader) {
+      try {
+        const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+          global: {
+            headers: { Authorization: authHeader },
+          },
+        });
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (!authError && user) {
+          userId = user.id;
+          console.log(`User authenticated: ${userId}`);
+        } else {
+          console.warn("Could not verify user from auth header:", authError);
+        }
+      } catch (authErr) {
+        console.warn("Error verifying auth:", authErr);
+        // Continue without user ID - we'll use invoice.created_by
+      }
+    }
+
+    console.log(`Sending invoice ${invoiceId} to ${recipientEmail}`);
+
+    // Fetch invoice details using admin client
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from("invoices")
       .select("*")
       .eq("id", invoiceId)
@@ -46,8 +80,31 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Invoice not found");
     }
 
+    // Fetch company email settings
+    const { data: company, error: companyError } = await supabaseAdmin
+      .from("companies")
+      .select("email_sender_name, email_reply_to, resend_api_key, name, email")
+      .eq("id", invoice.company_id)
+      .single();
+
+    if (companyError) {
+      console.warn("Error fetching company email settings:", companyError);
+    }
+
+    // Use company email settings or fallback to defaults
+    const senderName = company?.email_sender_name || "FinanceHub";
+    const replyTo = company?.email_reply_to || company?.email || "support@financehub.com";
+    const fromEmail = company?.email || "onboarding@resend.dev";
+    
+    // Use company's Resend API key if configured, otherwise use environment variable
+    const resendApiKey = company?.resend_api_key || RESEND_API_KEY;
+    
+    if (!resendApiKey) {
+      throw new Error("Resend API key is not configured. Please set it in Settings > Email Settings.");
+    }
+
     // Fetch invoice items
-    const { data: items, error: itemsError } = await supabase
+    const { data: items, error: itemsError } = await supabaseAdmin
       .from("invoice_items")
       .select("*")
       .eq("invoice_id", invoiceId);
@@ -59,9 +116,9 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Invoice found:", invoice.invoice_number);
 
     const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat("en-US", {
+      return new Intl.NumberFormat("en-IN", {
         style: "currency",
-        currency: invoice.currency || "USD",
+        currency: invoice.currency || "INR",
       }).format(amount);
     };
 
@@ -191,14 +248,19 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send email using Resend API
+    console.log("Sending email via Resend API");
+    console.log("From:", `${senderName} <${fromEmail}>`);
+    console.log("Reply-To:", replyTo);
+    
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Authorization": `Bearer ${resendApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Invoices <onboarding@resend.dev>",
+        from: `${senderName} <${fromEmail}>`,
+        reply_to: replyTo,
         to: [recipientEmail],
         subject: `Invoice ${invoice.invoice_number} - ${formatCurrency(invoice.total)} due ${formatDate(invoice.due_date)}`,
         html: emailHtml,
@@ -210,7 +272,7 @@ const handler = async (req: Request): Promise<Response> => {
     const notificationStatus = emailResponse.ok ? "sent" : "failed";
 
     // Log notification to database
-    await supabase.from("notifications").insert({
+    await supabaseAdmin.from("notifications").insert({
       company_id: invoice.company_id,
       type: "email",
       category: "invoice",
@@ -225,7 +287,7 @@ const handler = async (req: Request): Promise<Response> => {
         amount: invoice.total
       },
       error_message: emailResponse.ok ? null : (emailResult.message || "Failed to send email"),
-      created_by: invoice.created_by,
+      created_by: userId || invoice.created_by,
     });
 
     if (!emailResponse.ok) {
@@ -237,7 +299,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Update invoice status to sent if it was draft
     if (invoice.status === "draft") {
-      await supabase
+      await supabaseAdmin
         .from("invoices")
         .update({ status: "sent" })
         .eq("id", invoiceId);
@@ -250,7 +312,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-invoice-email:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Internal server error" }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

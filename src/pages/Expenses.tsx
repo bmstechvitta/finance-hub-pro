@@ -98,6 +98,8 @@ const Expenses = () => {
   const { hasFinanceAccess, isAdmin } = useAuth();
   const { data: expenses, isLoading } = useExpenses();
   const { data: stats, isLoading: statsLoading } = useExpenseStats();
+  const { data: company } = useCompany();
+  const currency = company?.currency || "INR";
   const { data: hasDelegatedAuthority } = useHasDelegatedAuthority();
   const rejectExpense = useRejectExpense();
   const deleteExpense = useDeleteExpense();
