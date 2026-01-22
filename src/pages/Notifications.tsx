@@ -33,7 +33,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-import { useNotifications, useNotificationStats } from "@/hooks/useNotifications";
+import { useNotifications, useNotificationStats, useClearNotifications } from "@/hooks/useNotifications";
+import { Trash2, Loader2 } from "lucide-react";
 
 const categoryConfig: Record<string, { icon: typeof Mail; label: string; color: string }> = {
   invoice: { icon: FileText, label: "Invoice", color: "text-blue-500" },
@@ -56,6 +57,7 @@ const Notifications = () => {
 
   const { data: notifications, isLoading } = useNotifications(100);
   const { data: stats, isLoading: statsLoading } = useNotificationStats();
+  const clearNotifications = useClearNotifications();
 
   const filteredNotifications = notifications?.filter((notification) => {
     const matchesSearch =
@@ -79,13 +81,34 @@ const Notifications = () => {
     <DashboardLayout>
       {/* Page Header */}
       <div className="mb-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col items-center gap-4 text-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Notification Center</h1>
             <p className="text-muted-foreground">
               Track all sent emails, reminders, and system notifications
             </p>
           </div>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              if (confirm("Are you sure you want to clear all notifications? This action cannot be undone.")) {
+                clearNotifications.mutate();
+              }
+            }}
+            disabled={clearNotifications.isPending || !notifications || notifications.length === 0}
+          >
+            {clearNotifications.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Clearing...
+              </>
+            ) : (
+              <>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear All Notifications
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -218,12 +241,14 @@ const Notifications = () => {
                 ))
               ) : filteredNotifications?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center">
-                    <Bell className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                    <p className="mt-4 text-lg font-medium">No notifications found</p>
-                    <p className="text-sm text-muted-foreground">
-                      Notifications will appear here when emails are sent
-                    </p>
+                  <TableCell colSpan={5} className="py-12">
+                    <div className="flex flex-col items-center justify-center text-center">
+                      <Bell className="h-12 w-12 text-muted-foreground/50" />
+                      <p className="mt-4 text-lg font-medium">No notifications found</p>
+                      <p className="text-sm text-muted-foreground">
+                        Notifications will appear here when emails are sent
+                      </p>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (

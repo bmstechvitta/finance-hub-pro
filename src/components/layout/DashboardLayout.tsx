@@ -27,6 +27,9 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompany } from "@/hooks/useCompany";
+import { useNotifications, useClearNotifications } from "@/hooks/useNotifications";
+import { formatDistanceToNow } from "date-fns";
+import { Trash2, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,8 +51,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   // { label: "Quotations", href: "/quotations", icon: FileCheck },
-  { label: "Receipts", href: "/receipts", icon: Receipt, badge: 12 },
-  { label: "Invoices", href: "/invoices", icon: FileText, badge: 5 },
+  { label: "Receipts", href: "/receipts", icon: Receipt },
+  { label: "Invoices", href: "/invoices", icon: FileText },
   { label: "Expenses", href: "/expenses", icon: CreditCard },
   { label: "Payroll", href: "/payroll", icon: Wallet },
   { label: "Employees", href: "/employees", icon: Users },
@@ -72,6 +75,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, roles, signOut } = useAuth();
+  const { data: notifications } = useNotifications(5);
+  const clearNotifications = useClearNotifications();
 
   const handleSignOut = async () => {
     await signOut();
@@ -218,26 +223,71 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
-                      3
-                    </span>
+                    {notifications && notifications.length > 0 && (
+                      <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
+                        {notifications.length}
+                      </span>
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                  <div className="flex items-center justify-between px-2 py-1.5">
+                    <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                    {notifications && notifications.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Are you sure you want to clear all notifications?")) {
+                            clearNotifications.mutate();
+                          }
+                        }}
+                        disabled={clearNotifications.isPending}
+                      >
+                        {clearNotifications.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            Clear
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
-                    <span className="text-sm font-medium">Invoice #1234 is overdue</span>
-                    <span className="text-xs text-muted-foreground">2 hours ago</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
-                    <span className="text-sm font-medium">New receipt uploaded</span>
-                    <span className="text-xs text-muted-foreground">5 hours ago</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
-                    <span className="text-sm font-medium">Payroll processed for Dec</span>
-                    <span className="text-xs text-muted-foreground">1 day ago</span>
-                  </DropdownMenuItem>
+                  {notifications && notifications.length > 0 ? (
+                    <>
+                      {notifications.slice(0, 5).map((notification) => (
+                        <DropdownMenuItem
+                          key={notification.id}
+                          className="flex flex-col items-start gap-1 p-3 cursor-pointer"
+                          onClick={() => navigate("/notifications")}
+                        >
+                          <span className="text-sm font-medium">{notification.title}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(notification.created_at), {
+                              addSuffix: true,
+                            })}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                      {notifications.length > 5 && (
+                        <DropdownMenuItem
+                          className="text-center justify-center text-sm font-medium text-primary cursor-pointer"
+                          onClick={() => navigate("/notifications")}
+                        >
+                          View all notifications
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  ) : (
+                    <DropdownMenuItem disabled className="text-center justify-center py-4">
+                      <span className="text-sm text-muted-foreground">No notifications</span>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 

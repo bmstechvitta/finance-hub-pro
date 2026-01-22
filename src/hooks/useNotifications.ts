@@ -1,6 +1,7 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
+import { toast } from "@/hooks/use-toast";
 
 export interface Notification {
   id: string;
@@ -94,6 +95,51 @@ export function useNotificationStats() {
       }, {} as Record<string, number>) || {};
 
       return { total, sent, failed, todayCount, weekCount, byCategory };
+    },
+  });
+}
+
+export function useClearNotifications() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        throw new Error("Company not found");
+      }
+
+      // Delete all notifications for the company
+      const { error } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("company_id", profile.company_id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-stats"] });
+      toast({
+        title: "Notifications cleared",
+        description: "All notifications have been cleared successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to clear notifications",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 }
