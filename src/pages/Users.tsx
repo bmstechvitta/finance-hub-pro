@@ -56,68 +56,6 @@ interface User {
   createdAt: string;
 }
 
-const users: User[] = [
-  {
-    id: "1",
-    name: "John Smith",
-    email: "john.smith@company.com",
-    avatar: "john",
-    roles: ["super_admin"],
-    status: "active",
-    lastLogin: "Dec 29, 2024 10:32",
-    createdAt: "Jan 01, 2024",
-  },
-  {
-    id: "2",
-    name: "Sarah Johnson",
-    email: "sarah.johnson@company.com",
-    avatar: "sarah",
-    roles: ["admin", "finance_manager"],
-    status: "active",
-    lastLogin: "Dec 29, 2024 09:15",
-    createdAt: "Feb 15, 2024",
-  },
-  {
-    id: "3",
-    name: "Michael Chen",
-    email: "michael.chen@company.com",
-    avatar: "mike",
-    roles: ["accountant"],
-    status: "active",
-    lastLogin: "Dec 28, 2024 16:45",
-    createdAt: "Mar 20, 2024",
-  },
-  {
-    id: "4",
-    name: "Emily Davis",
-    email: "emily.davis@company.com",
-    avatar: "emily",
-    roles: ["hr"],
-    status: "active",
-    lastLogin: "Dec 29, 2024 08:00",
-    createdAt: "Apr 10, 2024",
-  },
-  {
-    id: "5",
-    name: "Alex Turner",
-    email: "alex.turner@company.com",
-    avatar: "alex",
-    roles: ["employee"],
-    status: "inactive",
-    lastLogin: "Dec 15, 2024 12:30",
-    createdAt: "May 05, 2024",
-  },
-  {
-    id: "6",
-    name: "Lisa Wong",
-    email: "lisa.wong@company.com",
-    avatar: "lisa",
-    roles: ["auditor"],
-    status: "active",
-    lastLogin: "Dec 28, 2024 14:20",
-    createdAt: "Jun 01, 2024",
-  },
-];
 
 const roleColors: Record<string, string> = {
   super_admin: "bg-primary text-primary-foreground",
@@ -150,25 +88,18 @@ const Users = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { data: usersData, isLoading } = useUsers();
 
-  // Use data from API if available, otherwise use mock data
-  const allUsers: (UserWithRoles | User)[] = usersData || users;
-
   // Map database users to display format
-  const mappedUsers = allUsers.map((user) => {
-    if ("full_name" in user) {
-      // Database user
-      return {
-        id: user.id,
-        name: user.full_name || user.email || "Unknown",
-        email: user.email || "",
-        avatar: user.full_name?.toLowerCase().replace(/\s+/g, "-") || user.email?.split("@")[0] || "user",
-        roles: user.roles || [],
-        status: "active" as const, // Assume active for now
-        lastLogin: user.updated_at ? format(new Date(user.updated_at), "MMM d, yyyy HH:mm") : "Never",
-        createdAt: user.created_at ? format(new Date(user.created_at), "MMM d, yyyy") : "Unknown",
-      };
-    }
-    return user;
+  const mappedUsers = (usersData || []).map((user) => {
+    return {
+      id: user.id,
+      name: user.full_name || user.email || "Unknown",
+      email: user.email || "",
+      avatar: user.full_name?.toLowerCase().replace(/\s+/g, "-") || user.email?.split("@")[0] || "user",
+      roles: user.roles || [],
+      status: "active" as const, // Assume active for now
+      lastLogin: user.updated_at ? format(new Date(user.updated_at), "MMM d, yyyy HH:mm") : "Never",
+      createdAt: user.created_at ? format(new Date(user.created_at), "MMM d, yyyy") : "Unknown",
+    };
   });
 
   // Get unique roles
@@ -197,69 +128,30 @@ const Users = () => {
   };
 
   const handleViewProfile = (displayUser: User) => {
-    // Find the original user data
-    const originalUser = allUsers.find((u) => u.id === displayUser.id);
-    if (originalUser && "full_name" in originalUser) {
+    // Find the original user data from database
+    const originalUser = usersData?.find((u) => u.id === displayUser.id);
+    if (originalUser) {
       setSelectedUser(originalUser as UserWithRoles);
-    } else {
-      // Convert mock user to UserWithRoles format
-      setSelectedUser({
-        id: displayUser.id,
-        email: displayUser.email,
-        full_name: displayUser.name,
-        phone: null,
-        avatar_url: null,
-        company_id: null,
-        created_at: displayUser.createdAt,
-        updated_at: displayUser.lastLogin,
-        roles: displayUser.roles,
-      } as UserWithRoles);
+      setViewDialogOpen(true);
     }
-    setViewDialogOpen(true);
   };
 
   const handleEditUser = (displayUser: User) => {
-    // Find the original user data
-    const originalUser = allUsers.find((u) => u.id === displayUser.id);
-    if (originalUser && "full_name" in originalUser) {
+    // Find the original user data from database
+    const originalUser = usersData?.find((u) => u.id === displayUser.id);
+    if (originalUser) {
       setSelectedUser(originalUser as UserWithRoles);
-    } else {
-      // Convert mock user to UserWithRoles format
-      setSelectedUser({
-        id: displayUser.id,
-        email: displayUser.email,
-        full_name: displayUser.name,
-        phone: null,
-        avatar_url: null,
-        company_id: null,
-        created_at: displayUser.createdAt,
-        updated_at: displayUser.lastLogin,
-        roles: displayUser.roles,
-      } as UserWithRoles);
+      setEditDialogOpen(true);
     }
-    setEditDialogOpen(true);
   };
 
   const handleManageRoles = (displayUser: User) => {
-    // Find the original user data
-    const originalUser = allUsers.find((u) => u.id === displayUser.id);
-    if (originalUser && "full_name" in originalUser) {
+    // Find the original user data from database
+    const originalUser = usersData?.find((u) => u.id === displayUser.id);
+    if (originalUser) {
       setSelectedUser(originalUser as UserWithRoles);
-    } else {
-      // Convert mock user to UserWithRoles format
-      setSelectedUser({
-        id: displayUser.id,
-        email: displayUser.email,
-        full_name: displayUser.name,
-        phone: null,
-        avatar_url: null,
-        company_id: null,
-        created_at: displayUser.createdAt,
-        updated_at: displayUser.lastLogin,
-        roles: displayUser.roles,
-      } as UserWithRoles);
+      setRolesDialogOpen(true);
     }
-    setRolesDialogOpen(true);
   };
 
   return (

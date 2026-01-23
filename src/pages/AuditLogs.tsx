@@ -33,8 +33,11 @@ import {
   Settings,
   Shield,
 } from "lucide-react";
+import { useAuditLogs } from "@/hooks/useAuditLogs";
+import { format } from "date-fns";
+import { Loader2 } from "lucide-react";
 
-interface AuditLog {
+interface AuditLogDisplay {
   id: string;
   user: {
     name: string;
@@ -49,69 +52,6 @@ interface AuditLog {
   ipAddress: string;
 }
 
-const auditLogs: AuditLog[] = [
-  {
-    id: "1",
-    user: { name: "John Smith", email: "john@company.com", avatar: "john" },
-    action: "Created invoice INV-2024-001",
-    actionType: "create",
-    tableName: "invoices",
-    recordId: "inv-001",
-    timestamp: "Dec 29, 2024 10:32:15",
-    ipAddress: "192.168.1.100",
-  },
-  {
-    id: "2",
-    user: { name: "Sarah Johnson", email: "sarah@company.com", avatar: "sarah" },
-    action: "Approved expense EXP-2024-045",
-    actionType: "approve",
-    tableName: "expenses",
-    recordId: "exp-045",
-    timestamp: "Dec 29, 2024 10:15:42",
-    ipAddress: "192.168.1.105",
-  },
-  {
-    id: "3",
-    user: { name: "Mike Chen", email: "mike@company.com", avatar: "mike" },
-    action: "Logged in",
-    actionType: "login",
-    tableName: "auth",
-    recordId: "-",
-    timestamp: "Dec 29, 2024 09:45:00",
-    ipAddress: "192.168.1.110",
-  },
-  {
-    id: "4",
-    user: { name: "Emily Davis", email: "emily@company.com", avatar: "emily" },
-    action: "Updated employee profile",
-    actionType: "update",
-    tableName: "employees",
-    recordId: "emp-012",
-    timestamp: "Dec 29, 2024 09:30:22",
-    ipAddress: "192.168.1.115",
-  },
-  {
-    id: "5",
-    user: { name: "John Smith", email: "john@company.com", avatar: "john" },
-    action: "Deleted receipt RCP-2024-089",
-    actionType: "delete",
-    tableName: "receipts",
-    recordId: "rcp-089",
-    timestamp: "Dec 28, 2024 16:45:10",
-    ipAddress: "192.168.1.100",
-  },
-  {
-    id: "6",
-    user: { name: "Lisa Wong", email: "lisa@company.com", avatar: "lisa" },
-    action: "Logged out",
-    actionType: "logout",
-    tableName: "auth",
-    recordId: "-",
-    timestamp: "Dec 28, 2024 18:00:00",
-    ipAddress: "192.168.1.120",
-  },
-];
-
 const actionConfig = {
   login: { icon: LogIn, color: "bg-success/10 text-success", label: "Login" },
   logout: { icon: LogOut, color: "bg-muted text-muted-foreground", label: "Logout" },
@@ -125,6 +65,45 @@ const AuditLogs = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionTypeFilter, setActionTypeFilter] = useState<string>("all");
   const [userFilter, setUserFilter] = useState<string>("all");
+  const { data: auditLogsData, isLoading } = useAuditLogs();
+
+  // Transform database audit logs to display format
+  const auditLogs: AuditLogDisplay[] = (auditLogsData || []).map((log) => {
+    const profile = log.profiles;
+    const userName = profile?.full_name || profile?.email || "Unknown User";
+    const userEmail = profile?.email || "N/A";
+    const avatarSeed = profile?.full_name?.toLowerCase().replace(/\s+/g, "-") || profile?.email?.split("@")[0] || "user";
+    
+    // Determine action type from action string
+    const actionLower = log.action.toLowerCase();
+    let actionType: "login" | "logout" | "create" | "update" | "delete" | "approve" = "update";
+    if (actionLower.includes("login") || actionLower.includes("logged in")) {
+      actionType = "login";
+    } else if (actionLower.includes("logout") || actionLower.includes("logged out")) {
+      actionType = "logout";
+    } else if (actionLower.includes("created") || actionLower.includes("create")) {
+      actionType = "create";
+    } else if (actionLower.includes("deleted") || actionLower.includes("delete")) {
+      actionType = "delete";
+    } else if (actionLower.includes("approved") || actionLower.includes("approve")) {
+      actionType = "approve";
+    }
+
+    return {
+      id: log.id,
+      user: {
+        name: userName,
+        email: userEmail,
+        avatar: avatarSeed,
+      },
+      action: log.action,
+      actionType,
+      tableName: log.table_name,
+      recordId: log.record_id || "-",
+      timestamp: format(new Date(log.created_at), "MMM d, yyyy HH:mm:ss"),
+      ipAddress: log.ip_address || "N/A",
+    };
+  });
 
   // Get unique users
   const uniqueUsers = [...new Set(auditLogs.map((log) => log.user.name))];
@@ -245,7 +224,20 @@ const AuditLogs = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLogs.map((log) => {
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Loading audit logs...
+                  </TableCell>
+                </TableRow>
+              ) : filteredLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No audit logs found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredLogs.map((log) => {
                 const config = actionConfig[log.actionType];
                 const Icon = config.icon;
                 return (
@@ -287,7 +279,8 @@ const AuditLogs = () => {
                     </TableCell>
                   </TableRow>
                 );
-              })}
+              })
+              )}
             </TableBody>
           </Table>
         </CardContent>

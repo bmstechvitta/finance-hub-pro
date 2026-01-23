@@ -41,101 +41,11 @@ import {
 } from "lucide-react";
 import { EmployeeDialog } from "@/components/employees/EmployeeDialog";
 import { Employee, useEmployees, useDeleteEmployee } from "@/hooks/useEmployees";
+import { format } from "date-fns";
+import { useCompany } from "@/hooks/useCompany";
+import { formatCurrency } from "@/lib/utils";
 
-interface MockEmployee {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  department: string;
-  position: string;
-  location: string;
-  salary: number;
-  status: "active" | "on-leave" | "terminated";
-  joinDate: string;
-  avatar: string;
-}
 
-const mockEmployees: MockEmployee[] = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    email: "sarah.johnson@company.com",
-    phone: "+1 (555) 123-4567",
-    department: "Sales",
-    position: "Sales Director",
-    location: "New York",
-    salary: 125000,
-    status: "active",
-    joinDate: "Jan 15, 2022",
-    avatar: "sarah",
-  },
-  {
-    id: "2",
-    name: "Michael Chen",
-    email: "michael.chen@company.com",
-    phone: "+1 (555) 234-5678",
-    department: "Engineering",
-    position: "Senior Developer",
-    location: "San Francisco",
-    salary: 145000,
-    status: "active",
-    joinDate: "Mar 20, 2021",
-    avatar: "mike",
-  },
-  {
-    id: "3",
-    name: "Emily Davis",
-    email: "emily.davis@company.com",
-    phone: "+1 (555) 345-6789",
-    department: "Design",
-    position: "Lead Designer",
-    location: "Los Angeles",
-    salary: 110000,
-    status: "on-leave",
-    joinDate: "Jun 01, 2023",
-    avatar: "emily",
-  },
-  {
-    id: "4",
-    name: "Alex Turner",
-    email: "alex.turner@company.com",
-    phone: "+1 (555) 456-7890",
-    department: "Engineering",
-    position: "DevOps Engineer",
-    location: "Chicago",
-    salary: 130000,
-    status: "active",
-    joinDate: "Sep 10, 2022",
-    avatar: "alex",
-  },
-  {
-    id: "5",
-    name: "Lisa Wong",
-    email: "lisa.wong@company.com",
-    phone: "+1 (555) 567-8901",
-    department: "HR",
-    position: "HR Manager",
-    location: "New York",
-    salary: 95000,
-    status: "active",
-    joinDate: "Feb 28, 2020",
-    avatar: "lisa",
-  },
-  {
-    id: "6",
-    name: "James Wilson",
-    email: "james.wilson@company.com",
-    phone: "+1 (555) 678-9012",
-    department: "Finance",
-    position: "Financial Analyst",
-    location: "Boston",
-    salary: 85000,
-    status: "active",
-    joinDate: "Nov 15, 2023",
-    avatar: "james",
-  },
-];
 
 const statusConfig = {
   active: {
@@ -160,17 +70,18 @@ const Employees = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { data: employeesData, isLoading } = useEmployees();
   const deleteEmployee = useDeleteEmployee();
+  const { data: company } = useCompany();
+  const currency = company?.currency || "INR";
 
-  // Use data from API if available, otherwise use mock data
-  // Convert mock data to match Employee type if needed
-  const allEmployees: (Employee | MockEmployee)[] = employeesData !== undefined ? (employeesData || []) : (mockEmployees as any);
+  // Use data from database
+  const allEmployees = employeesData || [];
   
   // Get unique departments
   const uniqueDepartments = [...new Set(allEmployees.map((e) => e.department).filter(Boolean))];
 
   // Filter employees based on search query and filters
   const employees = allEmployees.filter((employee) => {
-    const employeeName = (employee as any).name || employee.full_name || "Unknown";
+    const employeeName = employee.full_name || "Unknown";
     const employeeEmail = employee.email || "";
     const employeeDepartment = employee.department || "";
     const employeePosition = employee.position || "";
@@ -244,7 +155,7 @@ const Employees = () => {
         <Card variant="stat" className="p-4">
           <p className="text-sm text-muted-foreground">Monthly Payroll</p>
           <p className="text-2xl font-bold">
-            ${(totalPayroll / 12).toLocaleString()}
+            {formatCurrency(totalPayroll / 12, currency)}
           </p>
         </Card>
       </div>
@@ -302,15 +213,14 @@ const Employees = () => {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {employees.map((employee) => {
-          // Handle both mock data structure and database structure
-          const employeeName = (employee as any).name || employee.full_name || "Unknown";
+          const employeeName = employee.full_name || "Unknown";
           const employeePosition = employee.position || "";
           const employeeEmail = employee.email || "";
           const employeeDepartment = employee.department || "";
           const employeeLocation = employee.location || "";
           const employeeStatus = (employee.status as "active" | "on-leave" | "terminated") || "active";
-          const employeeJoinDate = (employee as any).joinDate || (employee.hire_date ? new Date(employee.hire_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
-          const avatarSeed = (employee as any).avatar || employeeName.toLowerCase().replace(/\s+/g, "-");
+          const employeeJoinDate = employee.hire_date ? format(new Date(employee.hire_date), "MMM d, yyyy") : "";
+          const avatarSeed = employeeName.toLowerCase().replace(/\s+/g, "-") || employeeEmail?.split("@")[0] || "employee";
           
           const status = statusConfig[employeeStatus as keyof typeof statusConfig] || statusConfig.active;
           return (
