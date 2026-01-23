@@ -134,6 +134,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#374151",
   },
+  currencyCell: {
+    fontSize: 10,
+    color: "#374151",
+    fontFamily: "Times-Roman", // Times-Roman has better Unicode support for ₹ symbol
+  },
   descriptionCol: {
     flex: 3,
   },
@@ -168,6 +173,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 10,
     color: "#111827",
+    fontFamily: "Times-Roman", // Times-Roman has better Unicode support for ₹ symbol
   },
   grandTotalRow: {
     flexDirection: "row",
@@ -186,6 +192,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#111827",
+    fontFamily: "Times-Roman", // Times-Roman has better Unicode support for ₹ symbol
   },
   notesSection: {
     marginTop: 20,
@@ -227,6 +234,32 @@ const styles = StyleSheet.create({
     color: "#92400e",
     textAlign: "center",
   },
+  bankDetailsSection: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: "#f9fafb",
+    borderRadius: 4,
+  },
+  bankDetailsLabel: {
+    fontSize: 9,
+    fontWeight: "bold",
+    color: "#374151",
+    marginBottom: 8,
+  },
+  bankDetailsRow: {
+    flexDirection: "row",
+    marginBottom: 4,
+  },
+  bankDetailsLabelText: {
+    fontSize: 9,
+    color: "#6b7280",
+    width: 100,
+  },
+  bankDetailsValue: {
+    fontSize: 9,
+    color: "#111827",
+    flex: 1,
+  },
 });
 
 interface InvoicePDFProps {
@@ -240,6 +273,7 @@ interface InvoicePDFProps {
   companyWebsite?: string;
   companyGSTIN?: string;
   companyPAN?: string;
+  companyCurrency?: string;
   bankName?: string;
   bankAccountNumber?: string;
   bankIFSC?: string;
@@ -260,6 +294,7 @@ const InvoicePDFDocument = ({
   companyWebsite,
   companyGSTIN,
   companyPAN,
+  companyCurrency,
   bankName,
   bankAccountNumber,
   bankIFSC,
@@ -278,10 +313,36 @@ const InvoicePDFDocument = ({
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: invoice.currency || "INR",
+    // Use company currency, fallback to invoice currency, then INR
+    const currency = companyCurrency || invoice.currency || "INR";
+    
+    // Format the number with commas (Indian numbering system)
+    const formattedNumber = new Intl.NumberFormat("en-IN", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(amount);
+    
+    // For INR, use "Rs." prefix (more reliable than Unicode symbol in PDFs)
+    // This ensures the currency is always visible even if Unicode symbols don't render
+    if (currency === "INR") {
+      return `Rs. ${formattedNumber}`;
+    }
+    
+    // For other currencies, use standard formatting
+    const currencySymbols: Record<string, string> = {
+      USD: "$",
+      EUR: "€",
+      GBP: "£",
+      JPY: "¥",
+      AUD: "A$",
+      CAD: "C$",
+      SGD: "S$",
+      AED: "د.إ",
+      SAR: "﷼",
+    };
+    
+    const symbol = currencySymbols[currency] || currency;
+    return `${symbol}${formattedNumber}`;
   };
 
   // Format company address with additional details
@@ -372,10 +433,10 @@ const InvoicePDFDocument = ({
               <Text style={[styles.tableCell, styles.qtyCol]}>
                 {item.quantity}
               </Text>
-              <Text style={[styles.tableCell, styles.priceCol]}>
+              <Text style={[styles.currencyCell, styles.priceCol]}>
                 {formatCurrency(Number(item.unit_price))}
               </Text>
-              <Text style={[styles.tableCell, styles.amountCol]}>
+              <Text style={[styles.currencyCell, styles.amountCol]}>
                 {formatCurrency(Number(item.amount))}
               </Text>
             </View>
@@ -427,6 +488,43 @@ const InvoicePDFDocument = ({
           </View>
         )}
 
+        {/* Bank Details */}
+        {(bankName || bankAccountNumber || bankIFSC || bankBranch) && (
+          <View style={styles.bankDetailsSection}>
+            <Text style={styles.bankDetailsLabel}>Payment Details</Text>
+            {bankName && (
+              <View style={styles.bankDetailsRow}>
+                <Text style={styles.bankDetailsLabelText}>Bank Name:</Text>
+                <Text style={styles.bankDetailsValue}>{bankName}</Text>
+              </View>
+            )}
+            {bankAccountNumber && (
+              <View style={styles.bankDetailsRow}>
+                <Text style={styles.bankDetailsLabelText}>Account Number:</Text>
+                <Text style={styles.bankDetailsValue}>{bankAccountNumber}</Text>
+              </View>
+            )}
+            {bankIFSC && (
+              <View style={styles.bankDetailsRow}>
+                <Text style={styles.bankDetailsLabelText}>IFSC Code:</Text>
+                <Text style={styles.bankDetailsValue}>{bankIFSC}</Text>
+              </View>
+            )}
+            {bankAccountType && (
+              <View style={styles.bankDetailsRow}>
+                <Text style={styles.bankDetailsLabelText}>Account Type:</Text>
+                <Text style={styles.bankDetailsValue}>{bankAccountType}</Text>
+              </View>
+            )}
+            {bankBranch && (
+              <View style={styles.bankDetailsRow}>
+                <Text style={styles.bankDetailsLabelText}>Branch:</Text>
+                <Text style={styles.bankDetailsValue}>{bankBranch}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Footer */}
         <Text style={styles.footer}>
           Thank you for your business! • {invoice.invoice_number}
@@ -447,6 +545,7 @@ export async function generateInvoicePDF(
   companyWebsite?: string,
   companyGSTIN?: string,
   companyPAN?: string,
+  companyCurrency?: string,
   bankName?: string,
   bankAccountNumber?: string,
   bankIFSC?: string,
@@ -465,6 +564,7 @@ export async function generateInvoicePDF(
       companyWebsite={companyWebsite}
       companyGSTIN={companyGSTIN}
       companyPAN={companyPAN}
+      companyCurrency={companyCurrency}
       bankName={bankName}
       bankAccountNumber={bankAccountNumber}
       bankIFSC={bankIFSC}

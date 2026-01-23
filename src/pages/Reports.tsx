@@ -21,6 +21,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useCompany } from "@/hooks/useCompany";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
 
 const reports = [
   {
@@ -29,7 +30,6 @@ const reports = [
     description: "Detailed breakdown of all income sources",
     icon: TrendingUp,
     color: "bg-success/10 text-success",
-    lastGenerated: "Dec 28, 2024",
   },
   {
     id: "2",
@@ -37,7 +37,6 @@ const reports = [
     description: "Complete expense analysis by category",
     icon: TrendingDown,
     color: "bg-destructive/10 text-destructive",
-    lastGenerated: "Dec 28, 2024",
   },
   {
     id: "3",
@@ -45,7 +44,6 @@ const reports = [
     description: "Monthly P&L statement with comparisons",
     icon: DollarSign,
     color: "bg-primary/10 text-primary",
-    lastGenerated: "Dec 27, 2024",
   },
   {
     id: "4",
@@ -53,7 +51,6 @@ const reports = [
     description: "Employee payroll summary and deductions",
     icon: Users,
     color: "bg-info/10 text-info",
-    lastGenerated: "Dec 25, 2024",
   },
   {
     id: "5",
@@ -61,7 +58,6 @@ const reports = [
     description: "Tax summary for compliance and filing",
     icon: FileText,
     color: "bg-warning/10 text-warning",
-    lastGenerated: "Dec 20, 2024",
   },
   {
     id: "6",
@@ -69,7 +65,6 @@ const reports = [
     description: "Complete monthly financial overview",
     icon: Calendar,
     color: "bg-muted text-muted-foreground",
-    lastGenerated: "Dec 01, 2024",
   },
 ];
 
@@ -208,7 +203,10 @@ const Reports = () => {
 
       case "5": // Tax Report
         const taxableIncome = (invoiceStats?.paidAmount || 0) - (expenseStats?.approvedAmount || 0);
-        const estimatedTax = taxableIncome * 0.25; // Simplified 25% tax rate
+        // Note: Tax rate should be configured in company settings or tax configuration
+        // Using a placeholder rate - this should be made configurable
+        const taxRate = 0.18; // Default 18% GST rate for India
+        const estimatedTax = taxableIncome * taxRate;
         
         return {
           title: "Tax Report",
@@ -219,8 +217,9 @@ const Reports = () => {
               title: "Tax Information",
               items: [
                 { label: "Taxable Income", value: taxableIncome },
-                { label: "Estimated Tax Rate", value: "25%" },
-                { label: "Tax ID", value: company?.tax_id || "N/A" },
+                { label: "Estimated Tax Rate", value: `${(taxRate * 100).toFixed(0)}%` },
+                { label: "Tax ID", value: company?.tax_id || company?.gstin || "N/A" },
+                { label: "PAN", value: company?.pan || "N/A" },
               ],
             },
           ],
@@ -360,7 +359,7 @@ const Reports = () => {
           <div className="flex gap-3">
             <Button variant="outline">
               <Calendar className="mr-2 h-4 w-4" />
-              December 2024
+              {currentMonth}
             </Button>
             <Button onClick={() => setCustomReportOpen(true)}>
               <FileText className="mr-2 h-4 w-4" />
@@ -387,9 +386,6 @@ const Reports = () => {
                 {report.description}
               </p>
               <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                <span className="text-xs text-muted-foreground">
-                  Last: {report.lastGenerated}
-                </span>
                 <div className="flex gap-2">
                   <Button 
                     variant="outline" 
@@ -426,27 +422,36 @@ const Reports = () => {
 
       {/* Quick Stats */}
       <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Quick Summary - December 2024</h2>
+        <h2 className="text-xl font-semibold mb-4">Quick Summary - {currentMonth}</h2>
         <div className="grid gap-4 sm:grid-cols-4">
           <Card variant="stat" className="p-4">
             <p className="text-sm text-muted-foreground">Total Revenue</p>
-            <p className="text-2xl font-bold text-success">$284,520</p>
-            <p className="text-xs text-success">+18.3% vs Nov</p>
+            <p className="text-2xl font-bold text-success">
+              {formatCurrency(invoiceStats?.totalRevenue || 0, company?.currency || "INR")}
+            </p>
           </Card>
           <Card variant="stat" className="p-4">
             <p className="text-sm text-muted-foreground">Total Expenses</p>
-            <p className="text-2xl font-bold text-destructive">$113,000</p>
-            <p className="text-xs text-destructive">+8.2% vs Nov</p>
+            <p className="text-2xl font-bold text-destructive">
+              {formatCurrency(expenseStats?.totalAmount || 0, company?.currency || "INR")}
+            </p>
           </Card>
           <Card variant="stat" className="p-4">
             <p className="text-sm text-muted-foreground">Net Profit</p>
-            <p className="text-2xl font-bold">$171,520</p>
-            <p className="text-xs text-success">+24.1% vs Nov</p>
+            <p className="text-2xl font-bold">
+              {formatCurrency(
+                (invoiceStats?.paidAmount || 0) - (expenseStats?.approvedAmount || 0),
+                company?.currency || "INR"
+              )}
+            </p>
           </Card>
           <Card variant="stat" className="p-4">
             <p className="text-sm text-muted-foreground">Profit Margin</p>
-            <p className="text-2xl font-bold">60.3%</p>
-            <p className="text-xs text-success">+3.2% vs Nov</p>
+            <p className="text-2xl font-bold">
+              {invoiceStats?.paidAmount && invoiceStats.paidAmount > 0
+                ? `${(((invoiceStats.paidAmount - (expenseStats?.approvedAmount || 0)) / invoiceStats.paidAmount) * 100).toFixed(1)}%`
+                : "0%"}
+            </p>
           </Card>
         </div>
       </div>

@@ -248,13 +248,26 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          bank_account_number: string | null
+          bank_account_type: string | null
+          bank_branch: string | null
+          bank_ifsc: string | null
+          bank_name: string | null
           created_at: string
           currency: string | null
           email: string | null
+          email_reply_to: string | null
+          email_sender_name: string | null
+          gstin: string | null
           id: string
+          invoice_prefix: string | null
           logo_url: string | null
           name: string
+          pan: string | null
           phone: string | null
+          quotation_prefix: string | null
+          receipt_prefix: string | null
+          resend_api_key: string | null
           tax_id: string | null
           timezone: string | null
           updated_at: string
@@ -262,13 +275,26 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          bank_account_number?: string | null
+          bank_account_type?: string | null
+          bank_branch?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
           created_at?: string
           currency?: string | null
           email?: string | null
+          email_reply_to?: string | null
+          email_sender_name?: string | null
+          gstin?: string | null
           id?: string
+          invoice_prefix?: string | null
           logo_url?: string | null
           name: string
+          pan?: string | null
           phone?: string | null
+          quotation_prefix?: string | null
+          receipt_prefix?: string | null
+          resend_api_key?: string | null
           tax_id?: string | null
           timezone?: string | null
           updated_at?: string
@@ -276,13 +302,26 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          bank_account_number?: string | null
+          bank_account_type?: string | null
+          bank_branch?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
           created_at?: string
           currency?: string | null
           email?: string | null
+          email_reply_to?: string | null
+          email_sender_name?: string | null
+          gstin?: string | null
           id?: string
+          invoice_prefix?: string | null
           logo_url?: string | null
           name?: string
+          pan?: string | null
           phone?: string | null
+          quotation_prefix?: string | null
+          receipt_prefix?: string | null
+          resend_api_key?: string | null
           tax_id?: string | null
           timezone?: string | null
           updated_at?: string

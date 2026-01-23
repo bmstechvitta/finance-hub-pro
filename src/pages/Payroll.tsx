@@ -43,12 +43,16 @@ import { PayslipDialog } from "@/components/payroll/PayslipDialog";
 import { generatePayslipPDF, downloadPDF } from "@/components/payroll/PayslipPDF";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/hooks/useCompany";
+import { usePayslips, usePayslipStats } from "@/hooks/usePayslips";
+import { format } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
 
-interface Payslip {
+interface PayslipDisplay {
   id: string;
   employee: {
     name: string;
     position: string;
+    email?: string;
     avatar: string;
   };
   period: string;
@@ -59,64 +63,6 @@ interface Payslip {
   status: "paid" | "pending" | "processing";
   payDate: string;
 }
-
-const payslips: Payslip[] = [
-  {
-    id: "1",
-    employee: { name: "Sarah Johnson", position: "Sales Director", avatar: "sarah" },
-    period: "December 2024",
-    basicSalary: 10416.67,
-    allowances: 1500,
-    deductions: 2850,
-    netPay: 9066.67,
-    status: "paid",
-    payDate: "Dec 25, 2024",
-  },
-  {
-    id: "2",
-    employee: { name: "Michael Chen", position: "Senior Developer", avatar: "mike" },
-    period: "December 2024",
-    basicSalary: 12083.33,
-    allowances: 2000,
-    deductions: 3200,
-    netPay: 10883.33,
-    status: "paid",
-    payDate: "Dec 25, 2024",
-  },
-  {
-    id: "3",
-    employee: { name: "Emily Davis", position: "Lead Designer", avatar: "emily" },
-    period: "December 2024",
-    basicSalary: 9166.67,
-    allowances: 1200,
-    deductions: 2400,
-    netPay: 7966.67,
-    status: "processing",
-    payDate: "Dec 31, 2024",
-  },
-  {
-    id: "4",
-    employee: { name: "Alex Turner", position: "DevOps Engineer", avatar: "alex" },
-    period: "December 2024",
-    basicSalary: 10833.33,
-    allowances: 1800,
-    deductions: 3000,
-    netPay: 9633.33,
-    status: "pending",
-    payDate: "Dec 31, 2024",
-  },
-  {
-    id: "5",
-    employee: { name: "Lisa Wong", position: "HR Manager", avatar: "lisa" },
-    period: "December 2024",
-    basicSalary: 7916.67,
-    allowances: 1000,
-    deductions: 2100,
-    netPay: 6816.67,
-    status: "paid",
-    payDate: "Dec 25, 2024",
-  },
-];
 
 const statusConfig = {
   paid: {
@@ -137,7 +83,7 @@ const statusConfig = {
 };
 
 const Payroll = () => {
-  const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
+  const [selectedPayslip, setSelectedPayslip] = useState<PayslipDisplay | null>(null);
   const [isPayslipDialogOpen, setIsPayslipDialogOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
@@ -145,6 +91,34 @@ const Payroll = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
   const { data: company } = useCompany();
+  const { data: payslipsData, isLoading } = usePayslips();
+  const { data: stats } = usePayslipStats();
+  const currency = company?.currency || "INR";
+
+  // Transform database payslips to display format
+  const payslips: PayslipDisplay[] = (payslipsData || []).map((payslip) => {
+    const employee = payslip.employees;
+    const periodStart = new Date(payslip.period_start);
+    const periodEnd = new Date(payslip.period_end);
+    const period = format(periodStart, "MMMM yyyy");
+    
+    return {
+      id: payslip.id,
+      employee: {
+        name: employee?.full_name || "Unknown Employee",
+        position: employee?.position || "N/A",
+        email: employee?.email || undefined,
+        avatar: employee?.email || employee?.full_name || "employee",
+      },
+      period,
+      basicSalary: Number(payslip.basic_salary),
+      allowances: Number(payslip.allowances || 0),
+      deductions: Number(payslip.deductions || 0),
+      netPay: Number(payslip.net_pay),
+      status: (payslip.status as "paid" | "pending" | "processing") || "pending",
+      payDate: payslip.pay_date ? format(new Date(payslip.pay_date), "MMM d, yyyy") : "N/A",
+    };
+  });
 
   // Filter payslips based on search query and status filter
   const filteredPayslips = payslips.filter((payslip) => {
@@ -160,20 +134,21 @@ const Payroll = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const totalPayroll = payslips.reduce((sum, p) => sum + p.netPay, 0);
-  const paidAmount = payslips
-    .filter((p) => p.status === "paid")
-    .reduce((sum, p) => sum + p.netPay, 0);
-  const pendingAmount = payslips
-    .filter((p) => p.status !== "paid")
-    .reduce((sum, p) => sum + p.netPay, 0);
+  const totalPayroll = stats?.totalPayroll || 0;
+  const paidAmount = stats?.paidAmount || 0;
+  const pendingAmount = stats?.pendingAmount || 0;
 
-  const handleViewPayslip = (payslip: Payslip) => {
+  // Get current period for display (most recent payslip period or current month)
+  const currentPeriod = payslips.length > 0 
+    ? payslips[0].period 
+    : format(new Date(), "MMMM yyyy");
+
+  const handleViewPayslip = (payslip: PayslipDisplay) => {
     setSelectedPayslip(payslip);
     setIsPayslipDialogOpen(true);
   };
 
-  const handleDownloadPDF = async (payslip: Payslip) => {
+  const handleDownloadPDF = async (payslip: PayslipDisplay) => {
     try {
       setDownloadingId(payslip.id);
       
@@ -202,7 +177,7 @@ const Payroll = () => {
     }
   };
 
-  const handlePrint = async (payslip: Payslip) => {
+  const handlePrint = async (payslip: PayslipDisplay) => {
     try {
       setPrintingId(payslip.id);
       
@@ -275,7 +250,7 @@ const Payroll = () => {
           <div className="flex gap-3">
             <Button variant="outline">
               <Calendar className="mr-2 h-4 w-4" />
-              December 2024
+              {currentPeriod}
             </Button>
             <Button>
               <DollarSign className="mr-2 h-4 w-4" />
@@ -290,24 +265,24 @@ const Payroll = () => {
         <Card variant="stat" className="p-4">
           <p className="text-sm text-muted-foreground">Total Payroll</p>
           <p className="text-2xl font-bold">
-            ${totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            {formatCurrency(totalPayroll, currency)}
           </p>
         </Card>
         <Card variant="stat" className="p-4">
           <p className="text-sm text-muted-foreground">Paid</p>
           <p className="text-2xl font-bold text-success">
-            ${paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            {formatCurrency(paidAmount, currency)}
           </p>
         </Card>
         <Card variant="stat" className="p-4">
           <p className="text-sm text-muted-foreground">Pending</p>
           <p className="text-2xl font-bold text-warning">
-            ${pendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            {formatCurrency(pendingAmount, currency)}
           </p>
         </Card>
         <Card variant="stat" className="p-4">
           <p className="text-sm text-muted-foreground">Employees</p>
-          <p className="text-2xl font-bold">{payslips.length}</p>
+          <p className="text-2xl font-bold">{stats?.totalEmployees || payslips.length}</p>
         </Card>
       </div>
 
@@ -356,7 +331,20 @@ const Payroll = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayslips.map((payslip) => {
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    Loading payslips...
+                  </TableCell>
+                </TableRow>
+              ) : filteredPayslips.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    No payslips found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredPayslips.map((payslip) => {
                 const status = statusConfig[payslip.status];
                 const StatusIcon = status.icon;
                 return (
@@ -381,16 +369,16 @@ const Payroll = () => {
                     </TableCell>
                     <TableCell>{payslip.period}</TableCell>
                     <TableCell>
-                      ${payslip.basicSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatCurrency(payslip.basicSalary, currency)}
                     </TableCell>
                     <TableCell className="text-success">
-                      +${payslip.allowances.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      +{formatCurrency(payslip.allowances, currency)}
                     </TableCell>
                     <TableCell className="text-destructive">
-                      -${payslip.deductions.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      -{formatCurrency(payslip.deductions, currency)}
                     </TableCell>
                     <TableCell className="font-semibold">
-                      ${payslip.netPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatCurrency(payslip.netPay, currency)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {payslip.payDate}
@@ -440,7 +428,8 @@ const Payroll = () => {
                     </TableCell>
                   </TableRow>
                 );
-              })}
+              })
+              )}
             </TableBody>
           </Table>
         </CardContent>

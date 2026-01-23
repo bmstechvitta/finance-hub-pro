@@ -30,11 +30,12 @@ import {
   Loader2,
   GitBranch,
   TrendingUp,
+  Trash2,
 } from "lucide-react";
 import { ApprovalChainManager } from "@/components/expenses/ApprovalChainManager";
 import { AnomalyReviewManager } from "@/components/expenses/AnomalyReviewManager";
 import { AnomalyDetectionSettings } from "@/components/settings/AnomalyDetectionSettings";
-import { useCompany, useUpdateCompany, useUploadCompanyLogo } from "@/hooks/useCompany";
+import { useCompany, useUpdateCompany, useUploadCompanyLogo, useRemoveCompanyLogo } from "@/hooks/useCompany";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +47,7 @@ const Settings = () => {
   const { data: company, isLoading } = useCompany();
   const updateCompany = useUpdateCompany();
   const uploadLogo = useUploadCompanyLogo();
+  const removeLogo = useRemoveCompanyLogo();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { profile, user } = useAuth();
   const { toast } = useToast();
@@ -104,25 +106,25 @@ const Settings = () => {
       setFormData({
         name: company.name || "",
         tax_id: company.tax_id || "",
-        gstin: (company as any).gstin || "",
-        pan: (company as any).pan || "",
+        gstin: company.gstin || "",
+        pan: company.pan || "",
         email: company.email || "",
         phone: company.phone || "",
         address: company.address || "",
         website: company.website || "",
         currency: company.currency || "INR",
         timezone: company.timezone || "UTC",
-        bank_name: (company as any).bank_name || "",
-        bank_account_number: (company as any).bank_account_number || "",
-        bank_ifsc: (company as any).bank_ifsc || "",
-        bank_account_type: (company as any).bank_account_type || "",
-        bank_branch: (company as any).bank_branch || "",
-        email_sender_name: (company as any).email_sender_name || company?.name || "",
-        email_reply_to: (company as any).email_reply_to || company?.email || "",
-        resend_api_key: (company as any).resend_api_key || "",
-        invoice_prefix: (company as any).invoice_prefix || "INV",
-        receipt_prefix: (company as any).receipt_prefix || "RCP",
-        quotation_prefix: (company as any).quotation_prefix || "QT",
+        bank_name: company.bank_name || "",
+        bank_account_number: company.bank_account_number || "",
+        bank_ifsc: company.bank_ifsc || "",
+        bank_account_type: company.bank_account_type || "",
+        bank_branch: company.bank_branch || "",
+        email_sender_name: company.email_sender_name || company?.name || "",
+        email_reply_to: company.email_reply_to || company?.email || "",
+        resend_api_key: company.resend_api_key || "",
+        invoice_prefix: company.invoice_prefix || "INV",
+        receipt_prefix: company.receipt_prefix || "RCP",
+        quotation_prefix: company.quotation_prefix || "QT",
       });
       // Update logo version only when logo_url actually changes
       if (company.logo_url && company.logo_url !== prevLogoUrlRef.current) {
@@ -153,6 +155,19 @@ const Settings = () => {
           if (fileInputRef.current) {
             fileInputRef.current.value = '';
           }
+        },
+      }
+    );
+  };
+
+  const handleRemoveLogo = () => {
+    if (!company?.id) return;
+    removeLogo.mutate(
+      { companyId: company.id },
+      {
+        onSuccess: () => {
+          // Force logo refresh by updating version
+          setLogoVersion((prev) => prev + 1);
         },
       }
     );
@@ -483,18 +498,35 @@ const Settings = () => {
                       accept="image/*"
                       onChange={handleLogoUpload}
                     />
-                    <Button
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadLogo.isPending}
-                    >
-                      {uploadLogo.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="mr-2 h-4 w-4" />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadLogo.isPending}
+                      >
+                        {uploadLogo.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="mr-2 h-4 w-4" />
+                        )}
+                        Upload Logo
+                      </Button>
+                      {company?.logo_url && (
+                        <Button
+                          variant="outline"
+                          onClick={handleRemoveLogo}
+                          disabled={removeLogo.isPending}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          {removeLogo.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="mr-2 h-4 w-4" />
+                          )}
+                          Remove Logo
+                        </Button>
                       )}
-                      Upload Logo
-                    </Button>
+                    </div>
                   </div>
                   <Separator />
                   <div className="grid gap-4 sm:grid-cols-2">

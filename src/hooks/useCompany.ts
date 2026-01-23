@@ -71,6 +71,75 @@ export function useUpdateCompany() {
   });
 }
 
+export function useRemoveCompanyLogo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ companyId }: { companyId: string }) => {
+      // Delete ALL existing logo files from storage
+      try {
+        const { data: existingFiles, error: listError } = await supabase.storage
+          .from("company-assets")
+          .list(companyId);
+
+        if (!listError && existingFiles && existingFiles.length > 0) {
+          // Find all logo files (any extension or pattern)
+          const logoFiles = existingFiles.filter(f => 
+            f.name.toLowerCase().startsWith('logo')
+          );
+          
+          if (logoFiles.length > 0) {
+            const filesToDelete = logoFiles.map(f => `${companyId}/${f.name}`);
+            const { error: deleteError } = await supabase.storage
+              .from("company-assets")
+              .remove(filesToDelete);
+            
+            if (deleteError) {
+              console.warn("Error deleting logo files:", deleteError);
+              // Continue even if storage deletion fails
+            } else {
+              console.log("Deleted logo files:", filesToDelete);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("Error listing/deleting logo files:", error);
+        // Continue even if storage deletion fails
+      }
+
+      // Update company record to remove logo_url
+      const { error: updateError } = await supabase
+        .from("companies")
+        .update({ logo_url: null })
+        .eq("id", companyId);
+
+      if (updateError) {
+        console.error("Error removing logo_url:", updateError);
+        throw updateError;
+      }
+
+      return true;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch company data
+      queryClient.invalidateQueries({ queryKey: ["company"] });
+      queryClient.refetchQueries({ queryKey: ["company"] });
+      toast({
+        title: "Logo removed",
+        description: "Company logo has been removed",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Failed to remove logo:", error);
+      toast({
+        title: "Remove failed",
+        description: error.message || "Failed to remove company logo. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useUploadCompanyLogo() {
   const queryClient = useQueryClient();
 

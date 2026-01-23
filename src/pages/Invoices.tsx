@@ -182,13 +182,14 @@ const Invoices = () => {
         companyData?.email || undefined,
         companyData?.phone || undefined,
         companyData?.website || undefined,
-        (companyData as any)?.gstin || undefined,
-        (companyData as any)?.pan || undefined,
-        (companyData as any)?.bank_name || undefined,
-        (companyData as any)?.bank_account_number || undefined,
-        (companyData as any)?.bank_ifsc || undefined,
-        (companyData as any)?.bank_account_type || undefined,
-        (companyData as any)?.bank_branch || undefined
+        companyData?.gstin || undefined,
+        companyData?.pan || undefined,
+        companyData?.currency || "INR",
+        companyData?.bank_name || undefined,
+        companyData?.bank_account_number || undefined,
+        companyData?.bank_ifsc || undefined,
+        companyData?.bank_account_type || undefined,
+        companyData?.bank_branch || undefined
       );
       downloadPDF(blob, `${invoice.invoice_number}.pdf`);
       
