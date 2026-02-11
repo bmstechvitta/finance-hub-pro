@@ -43,7 +43,7 @@ import { PayslipDialog } from "@/components/payroll/PayslipDialog";
 import { generatePayslipPDF, downloadPDF } from "@/components/payroll/PayslipPDF";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/hooks/useCompany";
-import { usePayslips, usePayslipStats } from "@/hooks/usePayslips";
+import { usePayslips, usePayslipStats, useProcessPayroll } from "@/hooks/usePayslips";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 
@@ -93,6 +93,7 @@ const Payroll = () => {
   const { data: company } = useCompany();
   const { data: payslipsData, isLoading } = usePayslips();
   const { data: stats } = usePayslipStats();
+  const processPayroll = useProcessPayroll();
   const currency = company?.currency || "INR";
 
   // Transform database payslips to display format
@@ -142,6 +143,18 @@ const Payroll = () => {
   const currentPeriod = payslips.length > 0 
     ? payslips[0].period 
     : format(new Date(), "MMMM yyyy");
+
+  const handleProcessPayroll = () => {
+    const now = new Date();
+    const periodStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    processPayroll.mutate({
+      periodStart: format(periodStartDate, "yyyy-MM-dd"),
+      periodEnd: format(periodEndDate, "yyyy-MM-dd"),
+      payDate: format(now, "yyyy-MM-dd"),
+    });
+  };
 
   const handleViewPayslip = (payslip: PayslipDisplay) => {
     setSelectedPayslip(payslip);
@@ -252,9 +265,16 @@ const Payroll = () => {
               <Calendar className="mr-2 h-4 w-4" />
               {currentPeriod}
             </Button>
-            <Button>
-              <DollarSign className="mr-2 h-4 w-4" />
-              Process Payroll
+            <Button 
+              onClick={handleProcessPayroll}
+              disabled={processPayroll.isPending}
+            >
+              {processPayroll.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <DollarSign className="mr-2 h-4 w-4" />
+              )}
+              {processPayroll.isPending ? "Processing..." : "Process Payroll"}
             </Button>
           </div>
         </div>
