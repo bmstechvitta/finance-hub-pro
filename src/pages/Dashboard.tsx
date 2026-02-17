@@ -191,14 +191,16 @@ const Dashboard = () => {
                     className="animate-slide-up opacity-0"
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
-                    <StatCard
-                      title={categoryStat.categoryName}
-                      value={formatCurrency(netAmount, currency)}
-                      change={`${categoryStat.transactionCount} transactions`}
-                      changeType="neutral"
-                      icon={Tag}
-                      iconColor={isNetDebit ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"}
-                    />
+                    <Link to={`/category-transactions?category=${encodeURIComponent(categoryStat.categoryName)}`} className="block">
+                      <StatCard
+                        title={categoryStat.categoryName}
+                        value={formatCurrency(netAmount, currency)}
+                        change={`${categoryStat.transactionCount} transactions`}
+                        changeType="neutral"
+                        icon={Tag}
+                        iconColor={isNetDebit ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"}
+                      />
+                    </Link>
                   </div>
                 );
               })
