@@ -706,7 +706,7 @@ const Expenses = () => {
                           <PolicyViolationBadge expenseId={expense.id} />
                         </div>
                       )}</TableCell>
-                      <TableCell>{isStatementExpenseRow ? '' : (
+                      <TableCell>
                         <ExpenseActions
                           expense={expense}
                           canApprove={canApprove}
@@ -714,7 +714,7 @@ const Expenses = () => {
                           onReject={handleRejectClick}
                           onDelete={handleDeleteClick}
                         />
-                      )}</TableCell>
+                      </TableCell>
                     </TableRow>
                   );
                 })
